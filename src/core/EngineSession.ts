@@ -12,6 +12,8 @@ import type { MotionSource, MotionSourceStatus, MotionState } from '../types/mot
 import type { EngineProfile } from '../types/profile.ts';
 import { detectLanguage, type Language } from '../i18n/index.ts';
 import { FAVORITES_SCHEMA, RECENT_SCHEMA, pushRecent, reconcileIds, toggleFavorite } from '../storage/engineLists.ts';
+import { DEV_OPTIONS_SCHEMA } from '../input/devOptions.ts';
+import type { ShiftOutcome } from '../input/types.ts';
 import { LocalStore, type StoredSchema } from '../storage/storage.ts';
 import { settingsSchema, withGearing, withShiftStyle, type Gearing, type Settings, type ShiftStyle, type Theme } from './settings.ts';
 import { Store } from './Store.ts';
@@ -35,6 +37,8 @@ export interface SessionState extends Settings {
   recentEngines: readonly string[];
   /** Effective UI language: the saved choice, else the browser language. */
   locale: Language;
+  /** Developer Mode option (see src/input/devOptions.ts). */
+  scrollTrap: boolean;
 }
 
 export type ResetScope = 'favorites' | 'recent' | 'all';
@@ -83,6 +87,7 @@ export class EngineSession {
     const known = new Set(ENGINE_PROFILES.map((p) => p.id));
     const favorites = this.loadIdList(FAVORITES_SCHEMA, known);
     const recentEngines = this.loadIdList(RECENT_SCHEMA, known);
+    const { scrollTrap } = storage.load(DEV_OPTIONS_SCHEMA).value;
     this.drivetrain = new VirtualDrivetrain(withShiftStyle(withGearing(this.profile, settings.gearing), settings.shiftStyle));
     this.loader = new SoundBankLoader(baseUrl);
     this.store = new Store<SessionState>({
@@ -90,7 +95,7 @@ export class EngineSession {
       ignition: 'off', mode: 'gps', sourceStatus: { kind: 'idle' }, motionQuality: 'waiting',
       audioStatus: 'idle', bankKind: null, audioIssue: null,
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
-      favorites, recentEngines, locale,
+      favorites, recentEngines, locale, scrollTrap,
     });
     this.telemetry = { motion: this.estimator.sample(Date.now()), drivetrain: this.drivetrain.state, frame: 0 };
 
@@ -269,13 +274,13 @@ export class EngineSession {
       this.store.set({ recentEngines: [] });
     }
     if (scope !== 'all') return;
-    this.storage.clearAll([this.settingsSchema.key, FAVORITES_SCHEMA.key, RECENT_SCHEMA.key]);
+    this.storage.clearAll([this.settingsSchema.key, FAVORITES_SCHEMA.key, RECENT_SCHEMA.key, DEV_OPTIONS_SCHEMA.key]);
     const d = DEFAULT_SETTINGS;
     const locale = browserLanguage();
     this.store.set({
       volume: d.volume, units: d.units, demoScenarioId: d.demoScenarioId, demoNoise: d.demoNoise,
       demoNoCoordsSpeed: d.demoNoCoordsSpeed, gearing: d.gearing, shiftStyle: d.shiftStyle, theme: d.theme,
-      language: null, locale,
+      language: null, locale, scrollTrap: false,
     });
     this.audio.setVolume(d.volume);
     applyTheme(d.theme);
@@ -290,9 +295,16 @@ export class EngineSession {
   }
 
   /** Steering-wheel scroll / keys: one gear down (-1) or up (+1) from what the automatic chose. */
-  manualShift(direction: -1 | 1): void {
-    if (this.store.get().ignition !== 'on') return;
-    this.drivetrain.manualShift(direction);
+  manualShift(direction: -1 | 1): ShiftOutcome {
+    if (this.store.get().ignition !== 'on') return 'ignition-off';
+    const r = this.drivetrain.manualShift(direction);
+    return r === 'not-running' ? 'ignition-off' : r;
+  }
+
+  /** Developer Mode: experimental scroll trap for steering wheels that only scroll the page. */
+  setScrollTrap(scrollTrap: boolean): void {
+    this.store.set({ scrollTrap });
+    this.storage.save(DEV_OPTIONS_SCHEMA, { scrollTrap });
   }
 
   /** On-screen REV pedal held / released. */

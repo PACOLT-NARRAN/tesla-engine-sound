@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '../hooks/useFrame.ts';
 import { useSession } from '../hooks/SessionContext.ts';
+import { formatEntry, inputDiagnostics } from '../input/InputDiagnostics.ts';
 
 /** ?debug=1 overlay. Text updated ~8x/s directly in the DOM; pointer-events disabled. */
 export function DebugOverlay() {
@@ -25,7 +26,8 @@ export function DebugOverlay() {
       `fixes          ok=${m.acceptedFixes} rejected=${m.rejectedFixes} last=${m.raw.lastRejectReason ?? '—'}`,
       `accel          ${f(m.accel)} m/s²  (${f(m.accel / 9.81)} g)`,
       `throttle/load  ${f(d.throttle)} / ${f(d.load)}   overrun=${d.overrun} limiter=${d.limiter}`,
-      `gear           ${d.gear === 0 ? 'N' : d.gear}   shifting=${d.shifting ? `${d.shiftDirection} ${f(d.shiftProgress)}` : 'no'}`,
+      `input          ${inputLine()}`,
+      `gear           ${d.gear === 0 ? 'N' : d.gear}  manual ${d.manualOffset > 0 ? '+' : ''}${d.manualOffset}   shifting=${d.shifting ? `${d.shiftDirection} ${f(d.shiftProgress)}` : 'no'}`,
       `rpm            ${Math.round(d.rpm)}  target ${Math.round(d.targetRpm)}`,
       `audio ctx      ${a.contextState}  ${a.sampleRate} Hz  latency ${f(a.baseLatencyMs, 1)} ms  bank=${a.bankKind}`,
       `master gain    ${f(a.masterGain, 3)}`,
@@ -36,4 +38,10 @@ export function DebugOverlay() {
   });
 
   return <pre className="debug-overlay" ref={pre} />;
+}
+
+function inputLine(): string {
+  const sum = inputDiagnostics.summary();
+  const last = sum.last ? formatEntry(sum.last) : 'none yet';
+  return `wheel=${sum.byKind.wheel} scroll=${sum.byKind.scroll} keys=${sum.byKind.keydown} applied=${sum.applied}  last: ${last}`;
 }

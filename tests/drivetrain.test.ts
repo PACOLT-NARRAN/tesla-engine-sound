@@ -228,3 +228,25 @@ test('shift styles raise the relaxed shift points; comfort leaves the profile un
   assert.ok(track.gearbox.shiftUpRPM.gentle > sport.gearbox.shiftUpRPM.gentle);
   assert.equal(track.gearbox.shiftUpRPM.hard, p.gearbox.shiftUpRPM.hard);
 });
+
+test('manualShift reports why a request was refused', () => {
+  const dt = new VirtualDrivetrain(testProfile());
+  assert.equal(dt.manualShift(-1), 'not-running');
+  dt.ignite();
+  for (let i = 0; i < 50; i++) dt.update(0.02, { speed: 0, accel: 0, stationary: true });
+  assert.equal(dt.manualShift(-1), 'no-gear', 'standing car has no automatic gear');
+  for (let i = 0; i < 400; i++) dt.update(0.02, { speed: kmh(Math.min(70, i * 0.5)), accel: 1, stationary: false });
+  for (let i = 0; i < 300; i++) dt.update(0.02, { speed: kmh(70), accel: 0, stationary: false });
+  assert.equal(dt.manualShift(-1), 'applied');
+  assert.equal(dt.manualShift(-1), 'applied');
+  assert.equal(dt.manualShift(-1), 'at-limit');
+});
+
+test('manual downshift in first gear is refused, not silently reverted', () => {
+  const dt = new VirtualDrivetrain(testProfile());
+  dt.ignite();
+  for (let i = 0; i < 100; i++) dt.update(0.02, { speed: kmh(8), accel: 0.5, stationary: false });
+  assert.equal(dt.state.gear, 1);
+  assert.equal(dt.manualShift(-1), 'out-of-range');
+  assert.equal(dt.state.manualOffset, 0);
+});

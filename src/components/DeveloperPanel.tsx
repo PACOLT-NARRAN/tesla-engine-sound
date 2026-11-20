@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { PROFILE_ISSUES } from '../profiles/registry.ts';
 import { engineTitle } from '../profiles/presentation.ts';
+import { inputDiagnostics } from '../input/InputDiagnostics.ts';
+import { InputDiagnosticsSection } from './InputDiagnosticsSection.tsx';
 import { Sheet } from './Sheet.tsx';
 
 /**
@@ -34,6 +36,7 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
       audio: { context: a.contextState, sampleRate: a.sampleRate },
       storage,
       profileIssues: PROFILE_ISSUES,
+      input: { scrollTrap: s.scrollTrap, summary: inputDiagnostics.summary(), log: inputDiagnostics.toText().split('\n').slice(-60) },
     };
   };
 
@@ -60,6 +63,7 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
             <tr><th>audio issue</th><td>{s.audioIssue ? (s.audioIssue.kind === 'bank-failed' ? s.audioIssue.detail : s.audioIssue.kind) : '—'}</td></tr>
           </tbody>
         </table>
+        <InputDiagnosticsSection />
         <h3>Local storage</h3>
         <table className="dev-table">
           <thead><tr><th>key</th><th>schema</th><th>stored</th><th>last load</th></tr></thead>

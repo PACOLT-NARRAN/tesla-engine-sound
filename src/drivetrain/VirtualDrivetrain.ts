@@ -40,6 +40,8 @@ export class VirtualDrivetrain {
   private autoGear = 0;
   private sinceAutoShift = 10;
   private manualIdle = 0;
+  /** Vehicle speed of the last update (m/s), to judge manual shift requests immediately. */
+  private lastSpeed = 0;
   private revRpm = 0;
   private revReleaseOverrun = 0;
 
@@ -79,10 +81,22 @@ export class VirtualDrivetrain {
   }
 
   /** Driver asks for one gear lower (-1) or higher (+1) than the automatic choice. */
-  manualShift(direction: -1 | 1): void {
-    if (!this.s.running || this.autoGear === 0) return;
-    this.s.manualOffset = clamp(this.s.manualOffset + direction, -MAX_MANUAL_OFFSET, MAX_MANUAL_OFFSET);
+  manualShift(direction: -1 | 1): 'applied' | 'not-running' | 'no-gear' | 'at-limit' | 'out-of-range' {
+    if (!this.s.running) return 'not-running';
+    if (this.autoGear === 0) return 'no-gear';
+    const next = clamp(this.s.manualOffset + direction, -MAX_MANUAL_OFFSET, MAX_MANUAL_OFFSET);
     this.manualIdle = 0;
+    if (next === this.s.manualOffset) return 'at-limit';
+    // First / top gear, or a gear that would pass the limiter / stall: refuse now instead of
+    // accepting and silently reverting on the next update.
+    if (this.gearForOffset(next) === this.gearForOffset(this.s.manualOffset)) return 'out-of-range';
+    this.s.manualOffset = next;
+    return 'applied';
+  }
+
+  private gearForOffset(offset: number): number {
+    const top = this.profile.gearbox.gearRatios.length;
+    return this.withinRevRange(clamp(this.autoGear + offset, 1, top), this.lastSpeed);
   }
 
   /** REV pedal: while held the clutch is in and the engine revs freely toward the limiter. */
@@ -128,6 +142,7 @@ export class VirtualDrivetrain {
     this.sinceShift += dt;
     this.sinceAutoShift += dt;
     this.manualIdle += dt;
+    this.lastSpeed = input.speed;
     if (!s.shifting && !s.revPedal) {
       const auto = selectGear(
         { currentGear: this.autoGear, speedMs: input.speed, throttle: this.shiftThrottle, sinceLastShift: this.sinceAutoShift, stationary: input.stationary, overrun: s.overrun },

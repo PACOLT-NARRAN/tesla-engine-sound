@@ -67,3 +67,9 @@ No code changes.
 `EngineSession` owns favorites, recent engines and the effective `locale` in its `Store`, alongside settings.
 Language, theme and reset actions never touch the AudioContext or the simulation loop.
 See `docs/SETTINGS.md` for the verified meaning of every setting.
+
+## Phase 2 — Input layer and diagnostics
+
+`src/input/` holds the typed input layer (adapters → normalized `DriveAction` → `ShiftOutcome`)
+and the in-memory diagnostics log shown in Developer Mode. `useManualShift` is now a thin hook
+over `InputController`. See [INPUT.md](INPUT.md) for details and the Tesla test plan.

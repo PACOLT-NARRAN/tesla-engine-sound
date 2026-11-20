@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ControlDock, type Panel } from '../components/ControlDock.tsx';
 import { DebugOverlay } from '../components/DebugOverlay.tsx';
 import { DemoPanel } from '../components/DemoPanel.tsx';
@@ -29,9 +29,11 @@ export function CockpitPage() {
   const close = () => setPanel(null);
   const t = useT();
   const name = engineTitle(profile);
-  useManualShift(session, s.ignition === 'on');
+  const trapRef = useRef<HTMLDivElement>(null);
+  // Only listen for Drive input while no sheet is open and the engine runs.
+  useManualShift(session, s.ignition === 'on' && panel === null, { diagnostics: debug, trap: trapRef, trapOn: s.scrollTrap });
 
-  return (
+  const cockpit = (
     <div className={`cockpit ignition-${s.ignition}`}>
       <ShiftLights profile={profile} />
       <StatusStrip profileName={name} />
@@ -57,7 +59,15 @@ export function CockpitPage() {
       {panel === 'demo' && <DemoPanel onClose={close} />}
       {panel === 'settings' && <SettingsPanel onClose={close} />}
       {debug && panel === 'developer' && <DeveloperPanel onClose={close} />}
-      {debug && <DebugOverlay />}
+      {debug && panel !== 'developer' && <DebugOverlay />}
+    </div>
+  );
+  if (!s.scrollTrap) return cockpit;
+  // Experimental (Developer Mode): a scroll container kept mid-way so native scrolling can be read.
+  return (
+    <div className="scroll-trap" ref={trapRef} tabIndex={-1}>
+      <div className="scroll-trap-stage">{cockpit}</div>
+      <div className="scroll-trap-spacer" aria-hidden="true" />
     </div>
   );
 }

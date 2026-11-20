@@ -4,7 +4,7 @@ import { InputController } from '../input/InputController.ts';
 import { inputDiagnostics } from '../input/InputDiagnostics.ts';
 
 const inSheet = (t: EventTarget | null) =>
-  typeof Element !== 'undefined' && t instanceof Element && t.closest('.sheet-backdrop') !== null;
+  typeof Element !== 'undefined' && t instanceof Element && t.closest('.sheet-backdrop, .garage') !== null;
 
 /**
  * Drive-screen input: steering-wheel scroll / mouse wheel and arrow / page keys shift manually

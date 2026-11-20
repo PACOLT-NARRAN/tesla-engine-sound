@@ -3,7 +3,7 @@ import { ControlDock, type Panel } from '../components/ControlDock.tsx';
 import { DebugOverlay } from '../components/DebugOverlay.tsx';
 import { DemoPanel } from '../components/DemoPanel.tsx';
 import { DeveloperPanel } from '../components/DeveloperPanel.tsx';
-import { EngineSelector } from '../components/EngineSelector.tsx';
+import { Garage } from '../components/Garage.tsx';
 import { GearIndicator } from '../components/GearIndicator.tsx';
 import { LoadMeters } from '../components/LoadMeters.tsx';
 import { Notices } from '../components/Notices.tsx';
@@ -55,7 +55,7 @@ export function CockpitPage() {
       <RevPedal />
       <Notices />
       <ControlDock onOpen={setPanel} profileName={name} developer={debug} />
-      {panel === 'engines' && <EngineSelector onClose={close} />}
+      {panel === 'engines' && <Garage onClose={close} />}
       {panel === 'demo' && <DemoPanel onClose={close} />}
       {panel === 'settings' && <SettingsPanel onClose={close} />}
       {debug && panel === 'developer' && <DeveloperPanel onClose={close} />}

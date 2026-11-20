@@ -16,6 +16,7 @@ import { DEV_OPTIONS_SCHEMA } from '../input/devOptions.ts';
 import type { ShiftOutcome } from '../input/types.ts';
 import { LocalStore, type StoredSchema } from '../storage/storage.ts';
 import { settingsSchema, withGearing, withShiftStyle, type Gearing, type Settings, type ShiftStyle, type Theme } from './settings.ts';
+import { PREVIEW_SECONDS, revPedalAt } from './preview.ts';
 import { Store } from './Store.ts';
 
 export type IgnitionState = 'off' | 'starting' | 'on';
@@ -39,6 +40,8 @@ export interface SessionState extends Settings {
   locale: Language;
   /** Developer Mode option (see src/input/devOptions.ts). */
   scrollTrap: boolean;
+  /** Garage preview in progress (only while the ignition is off). */
+  preview: { id: string; status: 'loading' | 'playing' } | null;
 }
 
 export type ResetScope = 'favorites' | 'recent' | 'all';
@@ -71,6 +74,8 @@ export class EngineSession {
   private profileToken = 0;
   private readonly storage: LocalStore;
   private readonly settingsSchema: StoredSchema<Settings>;
+  private previewTimer: ReturnType<typeof setInterval> | null = null;
+  private previewToken = 0;
 
   constructor(baseUrl: string, storage: LocalStore = new LocalStore()) {
     this.storage = storage;
@@ -95,7 +100,7 @@ export class EngineSession {
       ignition: 'off', mode: 'gps', sourceStatus: { kind: 'idle' }, motionQuality: 'waiting',
       audioStatus: 'idle', bankKind: null, audioIssue: null,
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
-      favorites, recentEngines, locale, scrollTrap,
+      favorites, recentEngines, locale, scrollTrap, preview: null,
     });
     this.telemetry = { motion: this.estimator.sample(Date.now()), drivetrain: this.drivetrain.state, frame: 0 };
 
@@ -134,6 +139,7 @@ export class EngineSession {
   }
 
   async ignite(): Promise<void> {
+    this.stopPreview(false);
     try {
       this.audio.unlock();
     } catch {
@@ -158,8 +164,9 @@ export class EngineSession {
     // Let the engine wind down audibly before stopping the loop.
     setTimeout(() => {
       if (this.store.get().ignition !== 'off') return;
-      this.audio.stop();
       this.stopLoop();
+      if (this.store.get().preview) return; // a Garage preview took over the audio
+      this.audio.stop();
     }, 700);
     this.store.set({ ignition: 'off', audioStatus: 'ready', mode: 'gps', sourceStatus: { kind: 'idle' } });
   }
@@ -173,6 +180,7 @@ export class EngineSession {
 
   async selectProfile(id: string): Promise<void> {
     const profile = getProfile(id);
+    if (this.store.get().preview) this.stopPreview(true);
     if (!profile || profile.id === this.profile.id) return;
     this.profile = profile;
     this.store.set({ profileId: id });
@@ -191,6 +199,64 @@ export class EngineSession {
       await this.preload(profile);
     }
     this.loader.evictExcept(profile.id);
+  }
+
+  // --- Garage preview ------------------------------------------------------------
+
+  /**
+   * Plays a short rev sequence of any engine without selecting it. Only while the ignition is
+   * off (call from a tap: audio unlock needs the gesture). Tapping the same engine again stops it.
+   */
+  async previewEngine(id: string): Promise<void> {
+    const profile = getProfile(id);
+    if (!profile || this.store.get().ignition !== 'off') return;
+    const current = this.store.get().preview;
+    this.stopPreview(current !== null);
+    if (current?.id === id) return;
+    try {
+      this.audio.unlock();
+    } catch {
+      this.store.set({ audioIssue: { kind: 'no-webaudio' } });
+      return;
+    }
+    const token = ++this.previewToken;
+    this.store.set({ preview: { id, status: 'loading' } });
+    const bank = await this.bankFor(profile);
+    if (token !== this.previewToken || this.store.get().ignition !== 'off') return;
+    this.stopLoop(); // a just-switched-off engine must not keep driving the audio
+    const dt = new VirtualDrivetrain(this.geared(profile));
+    dt.ignite();
+    this.audio.start(bank, profile, { ignition: true });
+    void this.audio.resume().catch(() => undefined);
+    this.store.set({ preview: { id, status: 'playing' } });
+    const step = TICK_MS / 1000;
+    let t = 0;
+    this.previewTimer = setInterval(() => {
+      t += step;
+      dt.setRevPedal(revPedalAt(t));
+      const events = dt.update(step, { speed: 0, accel: 0, stationary: true });
+      this.audio.update(dt.state, events);
+      if (t >= PREVIEW_SECONDS) this.stopPreview(true);
+    }, TICK_MS);
+  }
+
+  /** Ends a preview. `fade` plays the shut-down sound; false cuts it (engine about to start). */
+  stopPreview(fade = true): void {
+    const active = this.store.get().preview;
+    if (!active && this.previewTimer === null) return;
+    ++this.previewToken;
+    if (this.previewTimer !== null) clearInterval(this.previewTimer);
+    this.previewTimer = null;
+    this.store.set({ preview: null });
+    if (this.store.get().ignition !== 'off' || active?.status !== 'playing') return;
+    if (!fade) return this.audio.stop();
+    this.audio.playShutdown();
+    const token = this.previewToken;
+    setTimeout(() => {
+      if (token !== this.previewToken || this.store.get().ignition !== 'off' || this.store.get().preview) return;
+      this.audio.stop();
+      this.loader.evictExcept(this.profile.id);
+    }, 700);
   }
 
   // --- Modes -----------------------------------------------------------------

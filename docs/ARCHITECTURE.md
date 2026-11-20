@@ -73,3 +73,21 @@ See `docs/SETTINGS.md` for the verified meaning of every setting.
 `src/input/` holds the typed input layer (adapters → normalized `DriveAction` → `ShiftOutcome`)
 and the in-memory diagnostics log shown in Developer Mode. `useManualShift` is now a thin hook
 over `InputController`. See [INPUT.md](INPUT.md) for details and the Tesla test plan.
+
+## Garage
+
+`src/components/Garage.tsx` is a full-screen layer opened from the ENGINE button. It sits over
+the Drive screen, so the engine, audio and GPS keep running while you browse.
+
+- `src/garage/garage.ts`: pure logic, unit tested. It builds items from profile + catalog, handles
+  filters (FREE/PRO/packs, induction, layout, favorites, last used, custom), runs the
+  accent-insensitive AND search over name, layout, induction, tags, pack and description in both
+  languages (never the internal bank id), and sorts.
+- `src/garage/labels.ts`: localized search words.
+- `src/profiles/packs.ts`: premium pack definitions. There are none yet; badges and the filter
+  are ready for them.
+- `EngineDetail.tsx`: full technical data, Preview, Select and DRIVE WITH THIS ENGINE.
+- Preview (`EngineSession.previewEngine`, script in `src/core/preview.ts`) plays a 6.5 s rev
+  sequence through the normal drivetrain and audio pipeline with the car standing still. It runs
+  only while the ignition is off. Starting the engine or selecting another engine stops it.
+- The old `EngineSelector` sheet was removed.

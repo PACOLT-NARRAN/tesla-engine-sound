@@ -6,7 +6,7 @@ import { LocalStore, createMemoryBackend, type KeyValueBackend } from '../src/st
 
 const DEFAULTS: Settings = {
   profileId: 'gt3flat6', volume: 0.8, units: 'kmh', demoScenarioId: 'full-cycle', demoNoise: false,
-  demoNoCoordsSpeed: false, gearing: 'normal', shiftStyle: 'sport', theme: 'dark', language: null,
+  demoNoCoordsSpeed: false, gearing: 'normal', shiftStyle: 'sport', transmission: 'auto', theme: 'dark', language: null,
 };
 const schema = settingsSchema(DEFAULTS);
 
@@ -21,7 +21,7 @@ test('legacy (pre-versioning) settings object is migrated without losing values'
   const r = new LocalStore(createMemoryBackend({ 'revline.settings.v1': JSON.stringify(legacy) })).load(schema);
   assert.equal(r.outcome, 'migrated');
   assert.equal(r.storedVersion, 1);
-  assert.deepEqual(r.value, { ...legacy, language: null });
+  assert.deepEqual(r.value, { ...legacy, language: null, transmission: 'auto' });
 });
 
 test('saved settings round-trip in a versioned envelope', () => {
@@ -30,7 +30,7 @@ test('saved settings round-trip in a versioned envelope', () => {
   const value: Settings = { ...DEFAULTS, language: 'cs', theme: 'light' };
   assert.ok(store.save(schema, value));
   const raw = JSON.parse(b.entries.get('revline.settings.v1') ?? 'null');
-  assert.equal(raw.v, 2);
+  assert.equal(raw.v, 3);
   const r = new LocalStore(b).load(schema);
   assert.equal(r.outcome, 'ok');
   assert.deepEqual(r.value, value);
@@ -58,6 +58,14 @@ test('invalid individual values are repaired, valid ones kept', () => {
   assert.equal(r2.value.language, 'cs');
   const r3 = new LocalStore(createMemoryBackend({ 'revline.settings.v1': JSON.stringify({ v: 2, data: { volume: Number.NaN } }) })).load(schema);
   assert.equal(r3.value.volume, DEFAULTS.volume);
+});
+
+test('version 2 settings gain transmission=auto and keep every other value', () => {
+  const data = { ...DEFAULTS, shiftStyle: 'track', theme: 'light', language: 'cs' } as Record<string, unknown>;
+  delete data.transmission;
+  const r = new LocalStore(createMemoryBackend({ 'revline.settings.v1': JSON.stringify({ v: 2, data }) })).load(schema);
+  assert.equal(r.outcome, 'migrated');
+  assert.deepEqual(r.value, { ...DEFAULTS, shiftStyle: 'track', theme: 'light', language: 'cs', transmission: 'auto' });
 });
 
 test('data written by a newer build is not guessed at', () => {

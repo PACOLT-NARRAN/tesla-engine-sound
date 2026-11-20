@@ -1,6 +1,7 @@
 import { useEffect, useRef, type PointerEvent } from 'react';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useFrame } from '../hooks/useFrame.ts';
+import { useT } from '../i18n/useT.ts';
 
 /**
  * Large hold-to-rev pedal on the driver's (left) side. While pressed the clutch is in and the
@@ -11,6 +12,7 @@ export function RevPedal() {
   const s = useSessionState();
   const ref = useRef<HTMLButtonElement>(null);
   const on = s.ignition === 'on';
+  const t = useT();
 
   useEffect(() => {
     const release = () => session.setRevPedal(false);
@@ -47,11 +49,11 @@ export function RevPedal() {
       onPointerCancel={up}
       onLostPointerCapture={up}
       onContextMenu={(e) => e.preventDefault()}
-      aria-label="Rev engine (hold)"
+      aria-label={t('hud.revAria')}
     >
       <span className="rev-pedal-grip" />
-      <span className="rev-pedal-label">REV</span>
-      <small>HOLD</small>
+      <span className="rev-pedal-label">{t('hud.rev')}</span>
+      <small>{t('hud.hold')}</small>
     </button>
   );
 }

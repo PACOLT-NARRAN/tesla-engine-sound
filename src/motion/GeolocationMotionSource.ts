@@ -11,11 +11,11 @@ export class GeolocationMotionSource implements MotionSource {
   start(onFix: (fix: RawFix) => void, onStatus: (status: MotionSourceStatus) => void): void {
     this.stop();
     if (typeof window !== 'undefined' && !window.isSecureContext) {
-      onStatus({ kind: 'unsupported', reason: 'Location needs HTTPS. Open the https:// address of this app.' });
+      onStatus({ kind: 'unsupported', code: 'insecure', reason: 'Location needs HTTPS. Open the https:// address of this app.' });
       return;
     }
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      onStatus({ kind: 'unsupported', reason: 'This browser does not provide location.' });
+      onStatus({ kind: 'unsupported', code: 'no-geolocation', reason: 'This browser does not provide location.' });
       return;
     }
     onStatus({ kind: 'starting' });
@@ -41,9 +41,9 @@ export class GeolocationMotionSource implements MotionSource {
           onStatus({ kind: 'denied' });
           this.stop();
         } else if (err.code === err.POSITION_UNAVAILABLE) {
-          onStatus({ kind: 'error', message: 'GPS position unavailable. Waiting for signal…' });
+          onStatus({ kind: 'error', code: 'unavailable', message: 'GPS position unavailable. Waiting for signal…' });
         } else {
-          onStatus({ kind: 'error', message: 'GPS is slow to respond. Still trying…' });
+          onStatus({ kind: 'error', code: 'timeout', message: 'GPS is slow to respond. Still trying…' });
         }
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },

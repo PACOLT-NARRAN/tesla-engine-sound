@@ -1,75 +1,117 @@
+import { useState } from 'react';
+import type { ResetScope } from '../core/EngineSession.ts';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
-import { PROFILE_ISSUES } from '../profiles/registry.ts';
+import type { MessageKey } from '../i18n/index.ts';
+import { useT } from '../i18n/useT.ts';
 import { Sheet } from './Sheet.tsx';
 
+/** Segmented control with one button per option. */
+function Segmented<T extends string>({ value, options, onPick }: { value: T; options: readonly { id: T; label: string }[]; onPick: (v: T) => void }) {
+  return (
+    <div className="segmented">
+      {options.map((o) => (
+        <button key={o.id} className={value === o.id ? 'on' : ''} aria-pressed={value === o.id} onClick={() => onPick(o.id)}>{o.label}</button>
+      ))}
+    </div>
+  );
+}
+
+const RESETS: readonly { scope: ResetScope; label: MessageKey }[] = [
+  { scope: 'favorites', label: 'settings.resetFavorites' },
+  { scope: 'recent', label: 'settings.resetRecent' },
+  { scope: 'all', label: 'settings.resetAll' },
+];
+
+/** User settings only. Developer tools live in the Developer panel (?debug=1). */
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const session = useSession();
   const s = useSessionState();
-  const debugHref = `${location.pathname}?debug=1`;
+  const t = useT();
+  const [confirm, setConfirm] = useState<ResetScope | null>(null);
+  const [done, setDone] = useState<ResetScope | null>(null);
 
   return (
-    <Sheet title="Settings" onClose={onClose}>
+    <Sheet title={t('settings.title')} onClose={onClose}>
       <div className="settings">
         <div className="setting-row">
-          <span>Speed units</span>
-          <div className="segmented">
-            <button className={s.units === 'kmh' ? 'on' : ''} onClick={() => session.setUnits('kmh')}>KM/H</button>
-            <button className={s.units === 'mph' ? 'on' : ''} onClick={() => session.setUnits('mph')}>MPH</button>
-          </div>
+          <span>{t('settings.units')}</span>
+          <Segmented value={s.units} onPick={(u) => session.setUnits(u)} options={[{ id: 'kmh', label: 'KM/H' }, { id: 'mph', label: 'MPH' }]} />
         </div>
         <div className="setting-row">
-          <span>Full revs at</span>
-          <div className="segmented">
-            <button className={s.gearing === 'fun' ? 'on' : ''} onClick={() => session.setGearing('fun')}>~100 KM/H</button>
-            <button className={s.gearing === 'normal' ? 'on' : ''} onClick={() => session.setGearing('normal')}>~130 KM/H</button>
-            <button className={s.gearing === 'real' ? 'on' : ''} onClick={() => session.setGearing('real')}>~160 KM/H</button>
-          </div>
+          <span>{t('settings.language')}</span>
+          <Segmented value={s.locale} onPick={(l) => session.setLanguage(l)} options={[{ id: 'en', label: 'ENGLISH' }, { id: 'cs', label: 'ČEŠTINA' }]} />
+        </div>
+        <div className="setting-row setting-row-hint">
+          <span>{t('settings.gearing')}</span>
+          <Segmented
+            value={s.gearing}
+            onPick={(g) => session.setGearing(g)}
+            options={[
+              { id: 'fun', label: t('settings.gearing.fun') },
+              { id: 'normal', label: t('settings.gearing.normal') },
+              { id: 'real', label: t('settings.gearing.real') },
+            ]}
+          />
+        </div>
+        <p className="setting-hint">{t('settings.gearingHint')}</p>
+        <div className="setting-row setting-row-hint">
+          <span>{t('settings.shiftStyle')}</span>
+          <Segmented
+            value={s.shiftStyle}
+            onPick={(v) => session.setShiftStyle(v)}
+            options={[
+              { id: 'comfort', label: t('settings.shiftStyle.comfort') },
+              { id: 'sport', label: t('settings.shiftStyle.sport') },
+              { id: 'track', label: t('settings.shiftStyle.track') },
+            ]}
+          />
+        </div>
+        <p className="setting-hint">{t('settings.shiftStyleHint')}</p>
+        <div className="setting-row">
+          <span>{t('settings.theme')}</span>
+          <Segmented
+            value={s.theme}
+            onPick={(v) => session.setTheme(v)}
+            options={[{ id: 'dark', label: t('settings.theme.dark') }, { id: 'light', label: t('settings.theme.light') }]}
+          />
         </div>
         <div className="setting-row">
-          <span>Shift style</span>
-          <div className="segmented">
-            <button className={s.shiftStyle === 'comfort' ? 'on' : ''} onClick={() => session.setShiftStyle('comfort')}>COMFORT</button>
-            <button className={s.shiftStyle === 'sport' ? 'on' : ''} onClick={() => session.setShiftStyle('sport')}>SPORT</button>
-            <button className={s.shiftStyle === 'track' ? 'on' : ''} onClick={() => session.setShiftStyle('track')}>TRACK</button>
-          </div>
+          <span>{t('settings.volume')}</span>
+          <input type="range" min={0} max={1} step={0.01} value={s.volume} aria-label={t('settings.volume')} onChange={(e) => session.setVolume(Number(e.target.value))} />
         </div>
-        <div className="setting-row">
-          <span>Display</span>
-          <div className="segmented">
-            <button className={s.theme === 'dark' ? 'on' : ''} onClick={() => session.setTheme('dark')}>DARK</button>
-            <button className={s.theme === 'light' ? 'on' : ''} onClick={() => session.setTheme('light')}>LIGHT</button>
-          </div>
-        </div>
-        <div className="setting-row">
-          <span>Volume</span>
-          <input type="range" min={0} max={1} step={0.01} value={s.volume} onChange={(e) => session.setVolume(Number(e.target.value))} />
-        </div>
-        <div className="setting-row">
-          <span>Diagnostics overlay</span>
-          <a className="btn" href={debugHref}>OPEN WITH ?debug=1</a>
-        </div>
-        <div className="setting-note">
-          <h3>Privacy</h3>
-          <p>Your location is processed only inside this browser tab to estimate speed. It is never stored or sent anywhere.</p>
-          <h3>Manual shifting</h3>
-          <p>
-            Scroll down on the steering-wheel scroll button (or press ↓) to drop one gear, up to two below the
-            automatic choice; scroll up (↑) to go back up. The gearbox returns to automatic after 15 s.
-            Hold the REV pedal on the left to rev the engine.
-          </p>
-          <h3>Safety</h3>
-          <p>Set up engine and volume before driving. Keep your eyes on the road.</p>
-          <h3>Audio</h3>
-          <p>
-            Engines marked SYNTH PREVIEW use a built-in synthesiser until their original sound bank is converted
-            (see docs/AUDIO_PIPELINE.md).
-          </p>
-          {PROFILE_ISSUES.length > 0 && (
-            <>
-              <h3>Profile errors</h3>
-              {PROFILE_ISSUES.map((i) => <p key={i.file}>{i.file}: {i.message}</p>)}
-            </>
+
+        <div className="setting-data">
+          <h3>{t('settings.data')}</h3>
+          <p className="setting-hint">{t('settings.dataHint')}</p>
+          {confirm === null ? (
+            <div className="data-actions">
+              {RESETS.map((r) => (
+                <button key={r.scope} className={`btn ${r.scope === 'all' ? 'btn-danger' : ''}`} onClick={() => { setDone(null); setConfirm(r.scope); }}>
+                  {t(r.label)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="data-confirm" role="alertdialog" aria-label={t('settings.confirmReset')}>
+              <p>{t(RESETS.find((r) => r.scope === confirm)?.label ?? 'settings.resetAll')} — {t('settings.confirmReset')}</p>
+              <div className="data-actions">
+                <button className="btn btn-danger" onClick={() => { session.resetLocalData(confirm); setDone(confirm); setConfirm(null); }}>{t('settings.confirmYes')}</button>
+                <button className="btn" onClick={() => setConfirm(null)}>{t('common.cancel')}</button>
+              </div>
+            </div>
           )}
+          {done && <p className="setting-hint" role="status">{t('settings.resetDone')}</p>}
+        </div>
+
+        <div className="setting-note">
+          <h3>{t('settings.privacyTitle')}</h3>
+          <p>{t('settings.privacy')}</p>
+          <h3>{t('settings.manualTitle')}</h3>
+          <p>{t('settings.manual')}</p>
+          <h3>{t('settings.safetyTitle')}</h3>
+          <p>{t('settings.safety')}</p>
+          <h3>{t('settings.audioTitle')}</h3>
+          <p>{t('settings.audio')}</p>
         </div>
       </div>
     </Sheet>

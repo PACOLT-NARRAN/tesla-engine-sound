@@ -52,3 +52,18 @@ No code changes.
 
 - Accounts/payments: add a gate around `EngineSession.selectProfile` / profile list; profiles already carry an `id`.
 - PWA: static assets + per-profile audio under `public/audio/` are cacheable; add a service worker and web manifest.
+
+## Platform foundation (Phase 1)
+
+| Folder / file | Responsibility |
+|---|---|
+| `src/storage/storage.ts` | `LocalStore`: the only place that touches `localStorage`. Versioned envelope `{ v, data }`, step-wise migrations, per-field sanitising, safe defaults, `clearAll()` for Reset Local Data. Tests use an in-memory backend. |
+| `src/storage/engineLists.ts` | Favorites / Last Used: pure list functions + their schemas. Lists store stable engine ids only. |
+| `src/i18n/` | Typed English/Czech dictionaries (`en.ts` is the reference; `cs.ts` must have every key — enforced by the type and a test). `translator(lang)` gives `t(key, params)`, `t.dyn()` for keys built from data ids, `t.num()` for locale number formatting. `useT()` re-renders on language change. |
+| `src/profiles/catalog.ts` | User-facing product metadata per engine id (marketing name, localized description, origin, tags, tier, pack). Technical data stays in `engines/*.json`; audio stays in `public/audio/<id>/`. |
+| `src/profiles/presentation.ts` | Title / subtitle / layout / induction text for an engine. Internal ids are never used as titles. |
+| `src/components/DeveloperPanel.tsx` | Developer Mode (only with `?debug=1`): internal ids, storage schema state, profile load errors, Copy diagnostics (no coordinates). |
+
+`EngineSession` owns favorites, recent engines and the effective `locale` in its `Store`, alongside settings.
+Language, theme and reset actions never touch the AudioContext or the simulation loop.
+See `docs/SETTINGS.md` for the verified meaning of every setting.

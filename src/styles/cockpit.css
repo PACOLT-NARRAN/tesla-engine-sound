@@ -180,7 +180,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .profile-tag { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .profile-tag span { font-size: clamp(15px, 1.9vw, 26px); font-weight: 800; font-style: italic; letter-spacing: 0.02em; }
-.profile-tag small { font-size: clamp(10px, 1vw, 13px); letter-spacing: 0.18em; color: var(--muted); font-weight: 700; }
+.profile-tag small { font-size: clamp(10px, 1vw, 13px); letter-spacing: 0.12em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-weight: 700; }
 
 /* ---------- Notices ---------- */
 .notices { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 16px 6px; }
@@ -279,6 +279,40 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 .engine-card dd { margin: 2px 0 0; font-family: var(--font-num); font-size: 17px; font-weight: 700; }
 .engine-selected { margin-left: auto; align-self: center; font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--accent); }
 
+/* Engine card: the main area selects, the heart toggles Favorites (two separate buttons). */
+.engine-card { padding: 0; }
+.engine-card-main {
+  all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+  flex: 1; padding: 16px 18px 14px; border-radius: 18px; text-align: left;
+}
+.engine-card-main:focus-visible, .fav-btn:focus-visible, .quick-chip:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.engine-card-main .engine-card-top { margin-right: 52px; min-height: 40px; align-items: flex-start; }
+.engine-card-main h3 { margin-right: 44px; }
+.engine-card-main dl { flex-wrap: wrap; gap: 8px 16px; }
+.engine-card-main dt { white-space: nowrap; }
+.engine-card-main .badge { text-transform: uppercase; }
+.engine-subtitle { color: var(--text); opacity: 0.8; font-family: var(--font-num); font-size: 14px; letter-spacing: 0.04em; }
+.engine-card dd.dd-text { font-family: var(--font-ui); font-size: 13px; font-weight: 700; padding-top: 3px; }
+.fav-btn {
+  position: absolute; top: 8px; right: 8px; width: 52px; height: 52px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(255,255,255,0.04); font-size: 24px; line-height: 1; color: var(--muted);
+}
+.fav-btn.on { color: var(--accent); border-color: rgba(255,59,31,0.45); }
+
+/* Favorites + Last Used: one compact connected row in landscape. */
+.quick-row { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; margin-bottom: 18px; }
+.quick-group { border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px 12px; background: rgba(255,255,255,0.025); min-width: 0; }
+.quick-title { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.2em; color: var(--muted); font-weight: 800; }
+.all-title { margin: 4px 0 10px; }
+.quick-list { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.quick-chip {
+  flex: none; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(255,255,255,0.05); font-weight: 800; font-size: 13px; letter-spacing: 0.06em; white-space: nowrap;
+}
+.quick-chip.selected { border-color: var(--accent); color: var(--accent); }
+.quick-empty { margin: 0; color: var(--muted); font-size: 14px; min-height: 48px; display: flex; align-items: center; }
+@media (max-aspect-ratio: 4/3) { .quick-row { grid-template-columns: 1fr; } }
+
 .scenario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .scenario { text-align: left; padding: 18px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,0.035); min-height: 96px; }
 .scenario.selected { border-color: var(--accent-2); }
@@ -298,6 +332,23 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 .segmented button.on { background: var(--accent); color: #fff; }
 .setting-note h3 { margin: 18px 0 4px; font-size: 13px; letter-spacing: 0.2em; color: var(--muted); }
 .setting-note p { margin: 0; color: #c9c9d2; font-size: 14px; line-height: 1.5; }
+
+.setting-row-hint { border-bottom: 0; padding-bottom: 0; }
+.setting-hint { margin: -6px 0 4px; color: var(--muted); font-size: 13px; line-height: 1.45; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.setting-data h3 { margin: 8px 0 4px; font-size: 13px; letter-spacing: 0.2em; color: var(--muted); }
+.setting-data .setting-hint { border-bottom: 0; margin: 0 0 10px; padding: 0; }
+.data-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.data-confirm p { margin: 0 0 10px; font-weight: 700; }
+.btn-danger { border-color: rgba(255,59,31,0.55); color: var(--accent); }
+.segmented button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+
+/* Developer Mode (?debug=1 only) */
+.dev-btn small { color: var(--blue); }
+.dev-panel h3 { margin: 18px 0 6px; font-size: 13px; letter-spacing: 0.2em; color: var(--muted); }
+.dev-table { border-collapse: collapse; width: 100%; font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: text; }
+.dev-table th, .dev-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; word-break: break-all; }
+.dev-table th { color: var(--muted); font-weight: 600; }
+.dev-panel .data-actions { margin-top: 18px; }
 
 /* ---------- REV pedal (driver side) ---------- */
 .rev-pedal {
@@ -374,6 +425,7 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 [data-theme='light'] .sheet { background: linear-gradient(180deg, #ffffff, #f1f2f5); box-shadow: 0 -20px 60px rgba(0,0,0,0.18); }
 [data-theme='light'] .sheet-close { background: #f1f2f5; }
 [data-theme='light'] .engine-card, [data-theme='light'] .scenario { background: #ffffff; }
+[data-theme='light'] .fav-btn, [data-theme='light'] .quick-chip, [data-theme='light'] .quick-group { background: #ffffff; }
 [data-theme='light'] .badge { background: rgba(0,0,0,0.06); color: #3a3d48; }
 [data-theme='light'] .toggle { color: #2a2d37; }
 [data-theme='light'] .btn { background: #ffffff; }

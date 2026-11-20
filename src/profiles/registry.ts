@@ -1,4 +1,5 @@
 import type { EngineProfile } from '../types/profile.ts';
+import { engineTitle } from './presentation.ts';
 import { validateProfile } from './schema.ts';
 
 /**
@@ -23,8 +24,8 @@ function load(): { profiles: EngineProfile[]; issues: ProfileLoadIssue[] } {
       console.warn('[profiles] skipped', file, e);
     }
   }
-  // Converted (real audio) banks first, then alphabetical.
-  profiles.sort((a, b) => Number(b.audio.converted) - Number(a.audio.converted) || a.name.localeCompare(b.name));
+  // Converted (real audio) banks first, then alphabetical by the name users see.
+  profiles.sort((a, b) => Number(b.audio.converted) - Number(a.audio.converted) || engineTitle(a).localeCompare(engineTitle(b)));
   return { profiles, issues };
 }
 

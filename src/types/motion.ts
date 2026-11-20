@@ -51,8 +51,9 @@ export type MotionSourceStatus =
   | { kind: 'starting' }
   | { kind: 'active' }
   | { kind: 'denied' }
-  | { kind: 'unsupported'; reason: string }
-  | { kind: 'error'; message: string };
+  /** `code` selects the localized user text; `reason`/`message` stay as English developer detail. */
+  | { kind: 'unsupported'; code: 'insecure' | 'no-geolocation'; reason: string }
+  | { kind: 'error'; code: 'unavailable' | 'timeout'; message: string };
 
 export interface MotionSource {
   readonly kind: 'gps' | 'demo';

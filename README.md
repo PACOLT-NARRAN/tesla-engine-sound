@@ -17,9 +17,10 @@ npm run dev          # http://localhost:5173
 ```
 
 1. Press **START ENGINE**.
-2. **ENGINE** → pick one of the 20 engines from qb-changesound.
+2. **ENGINE** → pick an engine; tap ♡ to add it to Favorites. The last three engines you used are listed on top.
 3. **MODE** → pick a scenario (Full cycle, City, Acceleration, Highway, Hard acceleration, Deceleration).
-4. Watch speed, RPM and automatic shifts, and listen. Add `?debug=1` to the URL for the diagnostics overlay.
+4. Watch speed, RPM and automatic shifts, and listen. Add `?debug=1` to the URL for Developer Mode (diagnostics overlay + DEV panel in the dock).
+5. **Settings** → language (English / Čeština), units, virtual gearing, shift style, theme, volume, reset local data.
 
 Other scripts:
 
@@ -67,13 +68,15 @@ pause audio when the tab is hidden; a "TAP TO RESUME" button appears.
 src/
   motion/       GPS + demo sources, MotionEstimator (filtering)
   drivetrain/   gearbox, throttle estimation, VirtualDrivetrain
-  profiles/     engines/*.json (auto-loaded), schema validation
+  profiles/     engines/*.json (auto-loaded), schema validation, catalog.ts (marketing names), presentation.ts
   audio/        EngineAudioEngine, SoundBankLoader, mixing math, placeholder synth (TODO)
   core/         EngineSession (pipeline + tick loop), store, settings
+  storage/      versioned local persistence, Favorites / Last Used
+  i18n/         English + Czech UI text
   components/ pages/ hooks/ styles/   HUD
 tests/          unit tests (node --test)
 tools/audio-import/   AWC → Opus conversion
-docs/           ARCHITECTURE, AUDIO_INVENTORY, AUDIO_PIPELINE
+docs/           ARCHITECTURE, SETTINGS, AUDIO_INVENTORY, AUDIO_PIPELINE
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the data flow and the filtering/drivetrain details.

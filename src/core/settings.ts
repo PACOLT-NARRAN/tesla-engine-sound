@@ -1,4 +1,6 @@
 import type { EngineProfile } from '../types/profile.ts';
+import { asRecord, pickBool, pickEnum, pickNumber, pickString, type StoredSchema } from '../storage/storage.ts';
+import type { Language } from '../i18n/index.ts';
 
 /** Persisted user preferences. GPS data is never persisted. */
 export interface Settings {
@@ -13,6 +15,8 @@ export interface Settings {
   /** When the automatic gearbox shifts: early (comfort) … late (track). */
   shiftStyle: ShiftStyle;
   theme: Theme;
+  /** UI language chosen by the user; null = follow the browser language. */
+  language: Language | null;
 }
 
 export type ShiftStyle = 'comfort' | 'sport' | 'track';
@@ -48,30 +52,48 @@ export function withShiftStyle(p: EngineProfile, style: ShiftStyle): EngineProfi
 export type Gearing = 'fun' | 'normal' | 'real';
 
 /**
- * Final-drive multiplier per gearing mode. 'real' reaches the sound's full range around 160 km/h;
- * 'normal' around 130 km/h; 'fun' around 100 km/h.
+ * Virtual gearing ("SHORT / MEDIUM / ORIGINAL" in the UI): a multiplier on the profile's final
+ * drive. A shorter final drive means more engine RPM at the same road speed, so the whole rev
+ * range is heard at everyday speeds. The factors were tuned so that the K20A, driven with the
+ * automatic gearbox, felt like reaching its full revs around 100 / 130 / 160 km/h; they are NOT
+ * exact speeds for every engine and do not affect Demo speeds. See docs/SETTINGS.md.
  */
 export const GEARING_FACTOR: Record<Gearing, number> = { real: 1, normal: 160 / 130, fun: 160 / 100 };
 
-const KEY = 'revline.settings.v1';
+export const GEARINGS: readonly Gearing[] = ['fun', 'normal', 'real'];
+export const SHIFT_STYLES: readonly ShiftStyle[] = ['comfort', 'sport', 'track'];
+export const THEMES: readonly Theme[] = ['dark', 'light'];
+export const LANGUAGES: readonly Language[] = ['en', 'cs'];
 
-export function loadSettings(defaults: Settings): Settings {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return defaults;
-    const parsed = JSON.parse(raw) as Partial<Settings>;
-    return { ...defaults, ...parsed };
-  } catch {
-    return defaults;
-  }
-}
-
-export function saveSettings(s: Settings): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {
-    /* storage may be unavailable (private mode); preferences just won't persist */
-  }
+/**
+ * Persisted under the key used since the first release. Version 1 = the bare settings object
+ * written before the versioned storage layer; version 2 = enveloped, adds `language`.
+ */
+export function settingsSchema(defaults: Settings): StoredSchema<Settings> {
+  return {
+    key: 'revline.settings.v1',
+    version: 2,
+    legacyVersion: 1,
+    defaults: () => ({ ...defaults }),
+    migrations: {
+      1: (data) => ({ ...asRecord(data), language: null }),
+    },
+    sanitize: (data, d) => {
+      const o = asRecord(data);
+      return {
+        profileId: pickString(o.profileId, d.profileId, 64),
+        volume: pickNumber(o.volume, 0, 1, d.volume),
+        units: pickEnum(o.units, ['kmh', 'mph'] as const, d.units),
+        demoScenarioId: pickString(o.demoScenarioId, d.demoScenarioId, 64),
+        demoNoise: pickBool(o.demoNoise, d.demoNoise),
+        demoNoCoordsSpeed: pickBool(o.demoNoCoordsSpeed, d.demoNoCoordsSpeed),
+        gearing: pickEnum(o.gearing, GEARINGS, d.gearing),
+        shiftStyle: pickEnum(o.shiftStyle, SHIFT_STYLES, d.shiftStyle),
+        theme: pickEnum(o.theme, THEMES, d.theme),
+        language: typeof o.language === 'string' && (LANGUAGES as readonly string[]).includes(o.language) ? (o.language as Language) : d.language,
+      };
+    },
+  };
 }
 
 /** Profile copy with the final drive scaled for the chosen gearing mode. */

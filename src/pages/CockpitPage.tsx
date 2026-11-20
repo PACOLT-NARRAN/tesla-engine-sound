@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ControlDock, type Panel } from '../components/ControlDock.tsx';
 import { DebugOverlay } from '../components/DebugOverlay.tsx';
 import { DemoPanel } from '../components/DemoPanel.tsx';
+import { DeveloperPanel } from '../components/DeveloperPanel.tsx';
 import { EngineSelector } from '../components/EngineSelector.tsx';
 import { GearIndicator } from '../components/GearIndicator.tsx';
 import { LoadMeters } from '../components/LoadMeters.tsx';
@@ -14,6 +15,8 @@ import { Tachometer } from '../components/Tachometer.tsx';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { isDebugEnabled } from '../hooks/useDebugFlag.ts';
 import { useManualShift } from '../hooks/useManualShift.ts';
+import { useT } from '../i18n/useT.ts';
+import { engineSubtitle, engineTitle } from '../profiles/presentation.ts';
 import { getProfile } from '../profiles/registry.ts';
 
 const debug = isDebugEnabled();
@@ -24,12 +27,14 @@ export function CockpitPage() {
   const [panel, setPanel] = useState<Panel>(null);
   const profile = getProfile(s.profileId) ?? session.currentProfile;
   const close = () => setPanel(null);
+  const t = useT();
+  const name = engineTitle(profile);
   useManualShift(session, s.ignition === 'on');
 
   return (
     <div className={`cockpit ignition-${s.ignition}`}>
       <ShiftLights profile={profile} />
-      <StatusStrip profileName={profile.name} />
+      <StatusStrip profileName={name} />
       <main className="cluster">
         <section className="cluster-left">
           <GearIndicator />
@@ -40,18 +45,18 @@ export function CockpitPage() {
         <section className="cluster-right">
           <LoadMeters />
           <div className="profile-tag">
-            <small>{profile.category}{profile.displacementL ? ` · ${profile.displacementL.toFixed(1)} L` : ''}</small>
-            <span>{profile.name}</span>
-            <small>REDLINE {profile.redlineRPM.toLocaleString('en-US')} · {profile.gearbox.gearRatios.length}-SPD</small>
+            <span>{name}</span>
+            <small>{engineSubtitle(profile, t)}</small>
           </div>
         </section>
       </main>
       <RevPedal />
       <Notices />
-      <ControlDock onOpen={setPanel} profileName={profile.name} />
+      <ControlDock onOpen={setPanel} profileName={name} developer={debug} />
       {panel === 'engines' && <EngineSelector onClose={close} />}
       {panel === 'demo' && <DemoPanel onClose={close} />}
       {panel === 'settings' && <SettingsPanel onClose={close} />}
+      {debug && panel === 'developer' && <DeveloperPanel onClose={close} />}
       {debug && <DebugOverlay />}
     </div>
   );

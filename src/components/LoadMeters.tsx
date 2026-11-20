@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '../hooks/useFrame.ts';
 import { useSession } from '../hooks/SessionContext.ts';
+import { useT } from '../i18n/useT.ts';
 
 /** Throttle/load and longitudinal-g bars. */
 export function LoadMeters() {
@@ -10,6 +11,7 @@ export function LoadMeters() {
   const gNeg = useRef<HTMLDivElement>(null);
   const gText = useRef<HTMLSpanElement>(null);
   const last = useRef({ t: -1, g: -99 });
+  const tr = useT();
 
   useFrame(() => {
     const d = session.telemetry.drivetrain;
@@ -33,7 +35,7 @@ export function LoadMeters() {
     <div className="meters">
       <div className="meter">
         <div className="meter-track"><div className="meter-fill load" ref={thr} /></div>
-        <small>LOAD</small>
+        <small>{tr('hud.load')}</small>
       </div>
       <div className="meter">
         <div className="meter-track split">

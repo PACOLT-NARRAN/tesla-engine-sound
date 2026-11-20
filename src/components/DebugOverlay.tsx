@@ -17,6 +17,7 @@ export function DebugOverlay() {
     const st = session.store.get();
     const f = (v: number | null, digits = 2) => (v === null || !Number.isFinite(v) ? '—' : v.toFixed(digits));
     const lines = [
+      `engine         ${session.currentProfile.id}  (bank ${a.bankKind})  locale=${st.locale}`,
       `mode           ${st.mode}  source=${st.sourceStatus.kind}  quality=${m.quality}`,
       `raw speed      ${f(m.raw.speed)} m/s (${m.raw.speedSource})  = ${f(m.raw.speed === null ? null : m.raw.speed * 3.6, 1)} km/h`,
       `filtered speed ${f(m.speed)} m/s  = ${f(m.speed * 3.6, 1)} km/h   stationary=${m.stationary}`,

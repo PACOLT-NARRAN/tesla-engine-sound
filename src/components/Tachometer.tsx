@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '../hooks/useFrame.ts';
 import { useSession } from '../hooks/SessionContext.ts';
+import { useT } from '../i18n/useT.ts';
 import type { EngineProfile } from '../types/profile.ts';
 import { msToKmh, msToMph } from '../utils/math.ts';
 
@@ -35,11 +36,12 @@ interface Props {
 /** Segmented RPM ring with the speed readout in the middle. Updated via rAF, never via React state. */
 export function Tachometer({ profile, units }: Props) {
   const session = useSession();
+  const t = useT();
   const segRefs = useRef<(SVGPathElement | null)[]>([]);
   const speedRef = useRef<HTMLSpanElement>(null);
   const rpmRef = useRef<HTMLSpanElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const last = useRef({ lit: -1, speed: -1, rpm: -1, zone: '' });
+  const last = useRef({ lit: -1, speed: -1, rpm: -1, zone: '', lang: '' });
 
   const maxRpm = Math.ceil((profile.limiterRPM + 500) / 1000) * 1000;
   const segments = useMemo(
@@ -79,8 +81,9 @@ export function Tachometer({ profile, units }: Props) {
       L.speed = sp;
     }
     const rpm = Math.round(d.rpm / 50) * 50;
-    if (rpm !== L.rpm && rpmRef.current) {
-      rpmRef.current.textContent = rpm.toLocaleString('en-US');
+    if ((rpm !== L.rpm || L.lang !== t.lang) && rpmRef.current) {
+      L.lang = t.lang;
+      rpmRef.current.textContent = t.num(rpm);
       L.rpm = rpm;
     }
     const zone = d.rpm >= profile.redlineRPM ? 'redline' : d.rpm >= profile.gearbox.shiftUpRPM.hard * 0.82 ? 'hot' : 'cool';

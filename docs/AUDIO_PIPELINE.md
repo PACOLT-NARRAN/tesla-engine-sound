@@ -135,3 +135,20 @@ and sums them (`idle.with.gain`, default 0.9).
 (full at ~65 %), pitch rising with RPM, 40 % quieter on overrun. Default: 0.5 for turbo / twin-turbo /
 twin-charged profiles, 0 otherwise. `audio.shiftBark` fires an exhaust crack on downshifts only
 (upshifts stay clean), louder at higher throttle.
+
+### Built-in PCM decoder, shared names, mixed sample rates
+
+- Most FiveM engine packs store plain 16-bit PCM in their AWC. The importer now decodes those
+  directly (`decodePcmAwc` in `lib/awc.mjs`, bit-identical to vgmstream within 1 LSB); vgmstream is
+  only needed for other codecs.
+- Stream names are resolved with the bank's own nametables plus the nametables of every other
+  imported pack and a list of stock GTA V extras (`COMMON_NAMES`: exhaust/limiter pops, dump
+  valves, `start_up` / `shut_down`). If no pop names resolve, short unnamed one-shots
+  (0.06–0.6 s) are used as pops and marked `guessed` in the mapping.
+- When the mapped loop streams use different sample rates (e.g. 32 kHz exhaust + 48 kHz engine),
+  they are resampled (windowed sinc) to the highest rate before mixing.
+- Verified on all 19 granular packs: the strongest spectral line of every accel sweep is an exact
+  integer multiple of the grain frequency (e.g. 4.00x on the I4, 6.00x on the V12 exhaust),
+  so rpm = 120 x grain Hz holds for all of them.
+- `p60b40` is an older non-granular pack (8 constant-pitch loops at 22 kHz, no names); it still
+  uses the synthesiser until it gets a hand-made mapping.

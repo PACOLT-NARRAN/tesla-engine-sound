@@ -31,27 +31,27 @@
     "finalDrive": 3.9,
     "tireRadiusM": 0.345,
     "shiftUpRPM": {
-      "gentle": 2900.0,
+      "gentle": 2900,
       "hard": 8350
     },
     "shiftDownRPM": {
-      "gentle": 1450.0,
-      "hard": 4200.0
+      "gentle": 1450,
+      "hard": 4200
     },
     "shiftDuration": 0.2,
     "minShiftInterval": 0.9,
-    "launchRPM": 4100.0
+    "launchRPM": 4100
   },
   "dynamics": {
     "engineResponse": 0.08,
-    "throttleSensitivity": 1.0,
+    "throttleSensitivity": 1,
     "fullThrottleAccel": 4.5
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/avesv/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.6,
     "shiftBark": 0.8,
     "placeholderTone": {

@@ -5,7 +5,7 @@
   "category": "V12",
   "aspiration": "twin-turbo",
   "cylinders": 12,
-  "displacementL": 6.0,
+  "displacementL": 6,
   "source": {
     "configLabel": "Pgni-AMG M158 6.0L V12TT",
     "soundName": "m158huayra",
@@ -31,27 +31,27 @@
     "finalDrive": 3.7,
     "tireRadiusM": 0.335,
     "shiftUpRPM": {
-      "gentle": 2300.0,
+      "gentle": 2300,
       "hard": 6650
     },
     "shiftDownRPM": {
-      "gentle": 1230.0,
-      "hard": 3400.0
+      "gentle": 1230,
+      "hard": 3400
     },
     "shiftDuration": 0.12,
     "minShiftInterval": 0.9,
-    "launchRPM": 3300.0
+    "launchRPM": 3300
   },
   "dynamics": {
     "engineResponse": 0.11,
-    "throttleSensitivity": 1.0,
+    "throttleSensitivity": 1,
     "fullThrottleAccel": 4.5
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/m158huayra/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.6,
     "shiftBark": 0.8,
     "placeholderTone": {

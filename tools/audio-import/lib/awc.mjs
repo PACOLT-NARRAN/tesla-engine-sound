@@ -62,7 +62,9 @@ export function readAwc(path) {
         if (Number.isFinite(hz) && hz > 0.5 && hz < 1000) grains.push({ sample: b.readUInt32LE(o), hz });
       }
     }
-    streams.push({ index: i, id, sampleRate, samples, grains, hasData: chunks.has(CHUNK_DATA) });
+    const codec = fmt && fmt.size >= 20 ? b[fmt.offset + 0x13] : null;
+    const data = chunks.get(CHUNK_DATA) ?? null;
+    streams.push({ index: i, id, sampleRate, samples, grains, hasData: data !== null, codec, data });
   }
   return { streams };
 }
@@ -75,17 +77,41 @@ export function readNametable(path) {
 const CORE_ROLES = ['engine_accel', 'exhaust_accel', 'engine_decel', 'exhaust_decel', 'engine_idle', 'exhaust_idle', 'startup', 'shutdown'];
 
 /**
+ * Stock GTA V extra-sound names that engine packs reuse (exhaust pops, dump valves, start/stop),
+ * so streams can be named even when a pack ships without .nametable files.
+ */
+export const COMMON_NAMES = (() => {
+  const out = new Set(['start_up', 'shut_down', 'start_up_interior', 'luxury_gen_vehicle_ignition_start', 'luxury_gen_vehicle_ignition_tail']);
+  const pad = (i) => String(i).padStart(2, '0');
+  for (let i = 1; i <= 5; i++) out.add(`start_up_${pad(i)}`);
+  const tiers = ['v_hi', 'hi', 'lo', 'lo_2', 'v_lo', 'mid', 'rally', 'muscle', 'sport', 'super', 'race', 'tuner', 'classic', 'luxury', 'offroad', 'bike'];
+  for (const t of tiers) for (const k of ['exhaust_pop', 'limiter_pop', 'backfire']) for (let i = 1; i <= 12; i++) out.add(`vehicle_extras_${t}_${k}_${pad(i)}`);
+  for (let i = 1; i <= 20; i++) for (const s of ['', 'a', 'b', 'c', 'd', '_wastegate', '_surge', '_dump_lo', '_dump_hi']) out.add(`vehicles_extras_dump_valve_${pad(i)}${s}`);
+  return [...out];
+})();
+
+/** Generic names from a nametable entry (engine-specific prefixes removed), for sharing across packs. */
+export function genericNames(id, raw) {
+  const n = raw.toLowerCase();
+  const out = [n];
+  for (const pre of [`dlc_${id}_${id}_`, `dlc_${id}_`, `${id}_`]) if (n.startsWith(pre)) out.push(n.slice(pre.length));
+  return out;
+}
+
+/**
  * Resolve stream names by hashing candidate names. Candidates: the core granular-engine names plus every
  * name in the bank's nametables with the usual `dlc_<id>_<id>_` / `<id>_` prefixes stripped.
  * @returns {Map<number, string>} stream index -> name
  */
-export function resolveStreamNames(awc, id, nametableNames = []) {
-  const cands = new Set(CORE_ROLES);
+export function resolveStreamNames(awc, id, nametableNames = [], sharedNames = []) {
+  const cands = new Set([...CORE_ROLES, ...COMMON_NAMES]);
   for (const raw of nametableNames) {
     const n = raw.toLowerCase();
     cands.add(n);
     for (const pre of [`dlc_${id}_${id}_`, `dlc_${id}_`, `${id}_`]) if (n.startsWith(pre)) cands.add(n.slice(pre.length));
   }
+  // Names other engine packs use (their nametables, prefixes stripped): packs share most extras.
+  for (const n of sharedNames) cands.add(n.toLowerCase());
   const byId = new Map(awc.streams.map((s) => [s.id, s.index]));
   const names = new Map();
   for (const c of cands) {
@@ -99,6 +125,8 @@ export function resolveStreamNames(awc, id, nametableNames = []) {
 export function roleOf(name) {
   if (!name) return 'unknown';
   if (CORE_ROLES.includes(name)) return name;
+  if (/^start_?up(_\d+)?$/.test(name)) return 'startup';
+  if (/^shut_?down(_\d+)?$/.test(name)) return 'shutdown';
   if (/door/.test(name)) return 'door';
   if (/exhaust_pop|backfire|pop_\d/.test(name)) return 'pop';
   if (/wastegate/.test(name)) return 'wastegate';
@@ -134,4 +162,28 @@ export function grainCurve(grains, sampleRate, stepS = 0.25) {
 export function meanCycleS(grains) {
   if (!grains || grains.length === 0) return null;
   return grains.reduce((s, g) => s + 1 / g.hz, 0) / grains.length;
+}
+
+/** AWC codec id for plain little-endian 16-bit PCM. */
+export const AWC_CODEC_PCM = 0;
+
+/**
+ * Decodes an AWC whose audio streams are all plain PCM (no vgmstream needed).
+ * Writes stream_NN.wav (1-based, same order as vgmstream subsongs) for each stream with audio.
+ * @returns {number|null} number of streams written, or null if any stream uses another codec.
+ */
+export function decodePcmAwc(path, outDir, writeWav16) {
+  const b = readFileSync(path);
+  const { streams } = readAwc(path);
+  const audio = streams.filter((s) => s.data && s.sampleRate);
+  if (audio.length === 0 || audio.some((s) => s.codec !== AWC_CODEC_PCM)) return null;
+  let k = 0;
+  for (const s of audio) {
+    k++;
+    const n = Math.min(s.samples ?? Infinity, Math.floor(s.data.size / 2));
+    const x = new Float32Array(n);
+    for (let i = 0; i < n; i++) x[i] = b.readInt16LE(s.data.offset + 2 * i) / 32768;
+    writeWav16(`${outDir}/stream_${String(k).padStart(2, '0')}.wav`, x, s.sampleRate);
+  }
+  return k;
 }

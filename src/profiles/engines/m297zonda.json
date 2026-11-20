@@ -31,27 +31,27 @@
     "finalDrive": 3.7,
     "tireRadiusM": 0.335,
     "shiftUpRPM": {
-      "gentle": 2600.0,
+      "gentle": 2600,
       "hard": 7650
     },
     "shiftDownRPM": {
-      "gentle": 1300.0,
-      "hard": 3900.0
+      "gentle": 1300,
+      "hard": 3900
     },
     "shiftDuration": 0.12,
     "minShiftInterval": 0.9,
-    "launchRPM": 3700.0
+    "launchRPM": 3700
   },
   "dynamics": {
     "engineResponse": 0.09,
-    "throttleSensitivity": 1.0,
+    "throttleSensitivity": 1,
     "fullThrottleAccel": 4.5
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/m297zonda/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.5,
     "shiftBark": 0.9,
     "placeholderTone": {

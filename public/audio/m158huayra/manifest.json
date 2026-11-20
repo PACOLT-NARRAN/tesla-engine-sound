@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "profileId": "m158huayra",
+  "source": "sfx/dlc_m158huayra/m158huayra.awc",
+  "generatedAt": "2026-11-20T18:57:45.874Z",
+  "codec": "wav",
+  "bands": [
+    {
+      "rpm": 850,
+      "on": {
+        "file": "on_850.wav",
+        "loopStart": 0.334021,
+        "loopEnd": 1.002063
+      },
+      "off": {
+        "file": "off_850.wav",
+        "loopStart": 0.334021,
+        "loopEnd": 1.002063
+      }
+    },
+    {
+      "rpm": 1149,
+      "on": {
+        "file": "on_1149.wav",
+        "loopStart": 0.209177,
+        "loopEnd": 0.627531
+      },
+      "off": {
+        "file": "off_1149.wav",
+        "loopStart": 0.210687,
+        "loopEnd": 0.632062
+      }
+    },
+    {
+      "rpm": 1553,
+      "on": {
+        "file": "on_1553.wav",
+        "loopStart": 0.217906,
+        "loopEnd": 0.653719
+      },
+      "off": {
+        "file": "off_1553.wav",
+        "loopStart": 0.23274,
+        "loopEnd": 0.698219
+      }
+    },
+    {
+      "rpm": 2098,
+      "on": {
+        "file": "on_2098.wav",
+        "loopStart": 0.239865,
+        "loopEnd": 0.719594
+      },
+      "off": {
+        "file": "off_2098.wav",
+        "loopStart": 0.24024,
+        "loopEnd": 0.720719
+      }
+    },
+    {
+      "rpm": 2836,
+      "on": {
+        "file": "on_2836.wav",
+        "loopStart": 0.232406,
+        "loopEnd": 0.697219
+      },
+      "off": {
+        "file": "off_2836.wav",
+        "loopStart": 0.23301,
+        "loopEnd": 0.699031
+      }
+    },
+    {
+      "rpm": 3832,
+      "on": {
+        "file": "on_3832.wav",
+        "loopStart": 0.219385,
+        "loopEnd": 0.658156
+      },
+      "off": {
+        "file": "off_3832.wav",
+        "loopStart": 0.212906,
+        "loopEnd": 0.638719
+      }
+    },
+    {
+      "rpm": 5179,
+      "on": {
+        "file": "on_5179.wav",
+        "loopStart": 0.208667,
+        "loopEnd": 0.626
+      },
+      "off": {
+        "file": "off_5179.wav",
+        "loopStart": 0.220354,
+        "loopEnd": 0.661062
+      }
+    },
+    {
+      "rpm": 7000,
+      "on": {
+        "file": "on_7000.wav",
+        "loopStart": 0.214594,
+        "loopEnd": 0.643781
+      },
+      "off": {
+        "file": "off_7000.wav",
+        "loopStart": 0.228771,
+        "loopEnd": 0.686312
+      }
+    }
+  ],
+  "pops": [
+    "pop_0.wav",
+    "pop_1.wav",
+    "pop_2.wav"
+  ],
+  "startup": "startup.wav",
+  "shutdown": "shutdown.wav"
+}

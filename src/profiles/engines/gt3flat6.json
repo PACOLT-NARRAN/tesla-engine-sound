@@ -5,7 +5,7 @@
   "category": "Flat-6",
   "aspiration": "naturally-aspirated",
   "cylinders": 6,
-  "displacementL": 4.0,
+  "displacementL": 4,
   "source": {
     "configLabel": "Rsche RS 4.0L Flat-6",
     "soundName": "gt3flat6",
@@ -32,27 +32,27 @@
     "finalDrive": 3.9,
     "tireRadiusM": 0.345,
     "shiftUpRPM": {
-      "gentle": 2900.0,
+      "gentle": 2900,
       "hard": 8850
     },
     "shiftDownRPM": {
-      "gentle": 1300.0,
-      "hard": 4500.0
+      "gentle": 1300,
+      "hard": 4500
     },
     "shiftDuration": 0.2,
     "minShiftInterval": 0.9,
-    "launchRPM": 4300.0
+    "launchRPM": 4300
   },
   "dynamics": {
     "engineResponse": 0.07,
-    "throttleSensitivity": 1.0,
-    "fullThrottleAccel": 4.0
+    "throttleSensitivity": 1,
+    "fullThrottleAccel": 4
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/gt3flat6/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.5,
     "shiftBark": 0.7,
     "placeholderTone": {

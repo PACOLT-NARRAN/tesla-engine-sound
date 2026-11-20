@@ -1,0 +1,591 @@
+{
+  "profileId": "rotary7",
+  "verified": true,
+  "source": "awc-metadata",
+  "note": "Generated from the AWC stream names and granular grain data (rpm = 120 x grain Hz). Edit freely; re-run with --remap to regenerate.",
+  "on": {
+    "streams": [
+      {
+        "stream": 2,
+        "name": "exhaust_accel",
+        "gain": 1,
+        "curve": [
+          [
+            0,
+            1526
+          ],
+          [
+            0.31,
+            1629
+          ],
+          [
+            0.601,
+            1770
+          ],
+          [
+            0.868,
+            1925
+          ],
+          [
+            1.17,
+            2114
+          ],
+          [
+            1.446,
+            2291
+          ],
+          [
+            1.701,
+            2463
+          ],
+          [
+            1.985,
+            2671
+          ],
+          [
+            2.248,
+            2865
+          ],
+          [
+            2.535,
+            3082
+          ],
+          [
+            2.801,
+            3282
+          ],
+          [
+            3.085,
+            3513
+          ],
+          [
+            3.352,
+            3728
+          ],
+          [
+            3.604,
+            3934
+          ],
+          [
+            3.872,
+            4169
+          ],
+          [
+            4.125,
+            4390
+          ],
+          [
+            4.392,
+            4630
+          ],
+          [
+            4.647,
+            4850
+          ],
+          [
+            4.914,
+            5076
+          ],
+          [
+            5.168,
+            5298
+          ],
+          [
+            5.435,
+            5528
+          ],
+          [
+            5.69,
+            5757
+          ],
+          [
+            5.956,
+            5984
+          ],
+          [
+            6.211,
+            6202
+          ],
+          [
+            6.477,
+            6430
+          ],
+          [
+            6.735,
+            6575
+          ]
+        ]
+      },
+      {
+        "stream": 27,
+        "name": "engine_accel",
+        "gain": 1,
+        "curve": [
+          [
+            0.017,
+            1386
+          ],
+          [
+            0.461,
+            1430
+          ],
+          [
+            0.78,
+            1736
+          ],
+          [
+            1.064,
+            1966
+          ],
+          [
+            1.315,
+            2191
+          ],
+          [
+            1.585,
+            2449
+          ],
+          [
+            1.864,
+            2742
+          ],
+          [
+            2.116,
+            2928
+          ],
+          [
+            2.398,
+            3038
+          ],
+          [
+            2.67,
+            3149
+          ],
+          [
+            2.932,
+            3275
+          ],
+          [
+            3.185,
+            3382
+          ],
+          [
+            3.464,
+            3513
+          ],
+          [
+            3.732,
+            3657
+          ],
+          [
+            3.99,
+            3814
+          ],
+          [
+            4.267,
+            3955
+          ],
+          [
+            4.532,
+            4201
+          ],
+          [
+            4.784,
+            4397
+          ],
+          [
+            5.051,
+            4608
+          ],
+          [
+            5.304,
+            4795
+          ],
+          [
+            5.572,
+            5085
+          ],
+          [
+            5.827,
+            5307
+          ],
+          [
+            6.094,
+            5521
+          ],
+          [
+            6.351,
+            5758
+          ],
+          [
+            6.617,
+            5975
+          ],
+          [
+            6.874,
+            6180
+          ],
+          [
+            7.084,
+            6214
+          ]
+        ]
+      }
+    ]
+  },
+  "off": {
+    "streams": [
+      {
+        "stream": 10,
+        "name": "exhaust_decel",
+        "gain": 1,
+        "curve": [
+          [
+            0,
+            7164
+          ],
+          [
+            0.25,
+            7086
+          ],
+          [
+            0.507,
+            6883
+          ],
+          [
+            0.771,
+            6657
+          ],
+          [
+            1.03,
+            6358
+          ],
+          [
+            1.283,
+            6095
+          ],
+          [
+            1.545,
+            5918
+          ],
+          [
+            1.795,
+            5635
+          ],
+          [
+            2.058,
+            5369
+          ],
+          [
+            2.31,
+            5145
+          ],
+          [
+            2.572,
+            4984
+          ],
+          [
+            2.844,
+            4770
+          ],
+          [
+            3.104,
+            4535
+          ],
+          [
+            3.378,
+            4289
+          ],
+          [
+            3.634,
+            4156
+          ],
+          [
+            3.901,
+            4003
+          ],
+          [
+            4.179,
+            3784
+          ],
+          [
+            4.44,
+            3590
+          ],
+          [
+            4.715,
+            3420
+          ],
+          [
+            4.966,
+            3304
+          ],
+          [
+            5.226,
+            3166
+          ],
+          [
+            5.5,
+            2996
+          ],
+          [
+            5.79,
+            2802
+          ],
+          [
+            6.053,
+            2694
+          ],
+          [
+            6.326,
+            2577
+          ],
+          [
+            6.616,
+            2405
+          ],
+          [
+            6.875,
+            2248
+          ],
+          [
+            7.152,
+            2121
+          ],
+          [
+            7.444,
+            2020
+          ],
+          [
+            7.754,
+            1859
+          ],
+          [
+            8.023,
+            1712
+          ],
+          [
+            8.317,
+            1557
+          ],
+          [
+            8.645,
+            1410
+          ],
+          [
+            8.911,
+            1315
+          ],
+          [
+            9.195,
+            1226
+          ]
+        ]
+      },
+      {
+        "stream": 19,
+        "name": "engine_decel",
+        "gain": 1,
+        "curve": [
+          [
+            0.02,
+            5236
+          ],
+          [
+            0.279,
+            5204
+          ],
+          [
+            0.531,
+            5129
+          ],
+          [
+            0.791,
+            5075
+          ],
+          [
+            1.054,
+            4976
+          ],
+          [
+            1.322,
+            4836
+          ],
+          [
+            1.573,
+            4752
+          ],
+          [
+            1.828,
+            4641
+          ],
+          [
+            2.09,
+            4514
+          ],
+          [
+            2.359,
+            4417
+          ],
+          [
+            2.635,
+            4303
+          ],
+          [
+            2.891,
+            4159
+          ],
+          [
+            3.152,
+            4037
+          ],
+          [
+            3.424,
+            3929
+          ],
+          [
+            3.705,
+            3762
+          ],
+          [
+            3.965,
+            3531
+          ],
+          [
+            4.238,
+            3249
+          ],
+          [
+            4.491,
+            2951
+          ],
+          [
+            4.786,
+            2564
+          ],
+          [
+            5.04,
+            2182
+          ],
+          [
+            5.338,
+            1998
+          ]
+        ]
+      }
+    ]
+  },
+  "idle": {
+    "stream": 17,
+    "name": "exhaust_idle",
+    "cycleS": 0.0794,
+    "with": {
+      "stream": 22,
+      "name": "engine_idle",
+      "cycleS": 0.079362,
+      "gain": 0.9
+    }
+  },
+  "pops": [
+    {
+      "stream": 1,
+      "name": "vehicle_extras_muscle_exhaust_pop_03"
+    },
+    {
+      "stream": 4,
+      "name": "vehicle_extras_muscle_exhaust_pop_01"
+    },
+    {
+      "stream": 7,
+      "name": "vehicle_extras_rally_exhaust_pop_05"
+    },
+    {
+      "stream": 9,
+      "name": "vehicle_extras_rally_exhaust_pop_03"
+    },
+    {
+      "stream": 11,
+      "name": "vehicle_extras_rally_exhaust_pop_01"
+    },
+    {
+      "stream": 16,
+      "name": "vehicle_extras_muscle_exhaust_pop_02"
+    },
+    {
+      "stream": 20,
+      "name": "vehicle_extras_rally_exhaust_pop_06"
+    },
+    {
+      "stream": 24,
+      "name": "vehicle_extras_rally_exhaust_pop_04"
+    },
+    {
+      "stream": 26,
+      "name": "vehicle_extras_rally_exhaust_pop_02"
+    }
+  ],
+  "blowoff": [
+    {
+      "stream": 5,
+      "name": "vehicles_extras_dump_valve_11_dump_lo"
+    },
+    {
+      "stream": 13,
+      "name": "vehicles_extras_dump_valve_12"
+    },
+    {
+      "stream": 23,
+      "name": "vehicles_extras_dump_valve_11_surge"
+    }
+  ],
+  "startup": {
+    "stream": 25,
+    "name": "start_up"
+  },
+  "shutdown": {
+    "stream": 21,
+    "name": "shut_down"
+  },
+  "unused": [
+    {
+      "stream": 0,
+      "name": "luxury_gen_vehicle_ignition_tail",
+      "role": "extra"
+    },
+    {
+      "stream": 3,
+      "name": null,
+      "role": "unknown"
+    },
+    {
+      "stream": 6,
+      "name": null,
+      "role": "unknown"
+    },
+    {
+      "stream": 8,
+      "name": null,
+      "role": "unknown"
+    },
+    {
+      "stream": 12,
+      "name": "classic_gen_vehicle_door_close",
+      "role": "door"
+    },
+    {
+      "stream": 14,
+      "name": "rally_gen_vehicle_door_open_2",
+      "role": "door"
+    },
+    {
+      "stream": 15,
+      "name": "luxury_gen_vehicle_ignition_start",
+      "role": "extra"
+    },
+    {
+      "stream": 18,
+      "name": null,
+      "role": "unknown"
+    }
+  ]
+}

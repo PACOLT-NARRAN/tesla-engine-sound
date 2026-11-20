@@ -23,7 +23,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readWav, toMono, writeWav16 } from './lib/wav.mjs';
 import { doubleLoop, extractLoop, flattenSweep, logSpaced, mix, ncc, normalize, rms, rpmForTime, timeForRpm } from './lib/loops.mjs';
-import { grainCurve, meanCycleS, readAwc, readNametable, resolveStreamNames, roleOf } from './lib/awc.mjs';
+import { decodePcmAwc, genericNames, grainCurve, meanCycleS, readAwc, readNametable, resolveStreamNames, roleOf } from './lib/awc.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const PROFILES = join(ROOT, 'src/profiles/engines');
@@ -89,6 +89,12 @@ function copyOriginals(repo, id) {
 // 2) Decode AWC -> WAV via vgmstream -----------------------------------------
 function decodeAwc(awc, outDir, vgm) {
   mkdirSync(outDir, { recursive: true });
+  // Plain-PCM banks (the usual case for FiveM engine packs) are decoded directly.
+  const pcm = decodePcmAwc(awc, outDir, writeWav16);
+  if (pcm !== null) {
+    log(`${basename(awc)}: ${pcm} PCM stream(s) decoded (built-in)`);
+    return;
+  }
   const meta = run(vgm, ['-m', awc]).stdout;
   const count = Number(/stream count:\s*(\d+)/i.exec(meta)?.[1] ?? 1);
   log(`${basename(awc)}: ${count} stream(s)`);
@@ -117,7 +123,7 @@ function awcMeta(id) {
   try {
     const awc = readAwc(awcPath);
     const names = readdirSync(dir).filter((f) => f.endsWith('.nametable')).flatMap((f) => readNametable(join(dir, f)));
-    const resolved = resolveStreamNames(awc, id, names);
+    const resolved = resolveStreamNames(awc, id, names, sharedNametableNames());
     return awc.streams.map((s) => ({ index: s.index, name: resolved.get(s.index) ?? null, role: roleOf(resolved.get(s.index)), sampleRate: s.sampleRate, grains: s.grains }));
   } catch (e) {
     log(`${id}: could not read AWC metadata (${e.message}) — falling back to a guess`);
@@ -143,7 +149,17 @@ function autoMapping(profile, streams, meta) {
   const idleE = idleM?.role === 'exhaust_idle' ? find('engine_idle') : undefined;
   const cycleE = idleE ? meanCycleS(idleE.grains) : null;
   const all = (role) => meta.filter((m) => m.role === role).map((m) => ({ stream: m.index, name: m.name }));
-  const one = (role) => { const m = find(role); return m ? { stream: m.index, name: m.name } : undefined; };
+  const one = (role) => {
+    // Prefer the plain name (start_up over start_up_02 / start_up_interior).
+    const m = meta.filter((x) => x.role === role).sort((p, q) => p.name.length - q.name.length || p.name.localeCompare(q.name))[0];
+    return m ? { stream: m.index, name: m.name } : undefined;
+  };
+  // Packs whose pop names could not be resolved: short unnamed one-shots are exhaust pops.
+  let pops = all('pop');
+  if (pops.length === 0) {
+    pops = meta.filter((m) => m.role === 'unknown' && (streams[m.index]?.durationS ?? 0) >= 0.06 && (streams[m.index]?.durationS ?? 9) <= 0.6)
+      .map((m) => ({ stream: m.index, name: null, guessed: 'short unnamed one-shot' }));
+  }
   return {
     profileId: profile.id,
     verified: true,
@@ -154,7 +170,7 @@ function autoMapping(profile, streams, meta) {
     ...(idleM && cycleS
       ? { idle: { stream: idleM.index, name: idleM.name, cycleS: +cycleS.toFixed(6), ...(idleE && cycleE ? { with: { stream: idleE.index, name: idleE.name, cycleS: +cycleE.toFixed(6), gain: 0.9 } } : {}) } }
       : {}),
-    pops: all('pop'),
+    pops,
     blowoff: all('blowoff'),
     ...(one('startup') ? { startup: one('startup') } : {}),
     ...(one('shutdown') ? { shutdown: one('shutdown') } : {}),
@@ -233,15 +249,60 @@ function encode(ffmpeg, wavPath, codec, bitrate) {
  * the band RPM and the constant-RPM results are mixed. `skip` lists [t0, t1] regions (seconds) that
  * contain no usable engine tone (e.g. a gear-change noise burst).
  */
+/** Nametable names of every engine pack imported so far (prefixes stripped); packs reuse extras. */
+function sharedNametableNames() {
+  const root = join(SOURCE, 'original');
+  if (!existsSync(root)) return [];
+  const out = new Set();
+  for (const other of readdirSync(root)) {
+    const d = join(root, other);
+    let files = [];
+    try { files = readdirSync(d); } catch { continue; }
+    for (const f of files) if (f.endsWith('.nametable')) for (const raw of readNametable(join(d, f))) for (const n of genericNames(other, raw)) out.add(n);
+  }
+  return [...out];
+}
+
+/** Band-limited (windowed-sinc) resampling, so streams recorded at different rates can be mixed. */
+function resample(x, from, to) {
+  if (from === to) return x;
+  const ratio = to / from;
+  const n = Math.floor(x.length * ratio);
+  const out = new Float32Array(n);
+  const cutoff = Math.min(1, ratio); // low-pass when downsampling
+  const half = 16;
+  for (let i = 0; i < n; i++) {
+    const c = i / ratio;
+    const k0 = Math.floor(c);
+    let acc = 0;
+    let norm = 0;
+    for (let k = k0 - half + 1; k <= k0 + half; k++) {
+      if (k < 0 || k >= x.length) continue;
+      const t = c - k;
+      const w = 0.5 + 0.5 * Math.cos((Math.PI * t) / half);
+      const s = t === 0 ? 1 : Math.sin(Math.PI * t * cutoff) / (Math.PI * t * cutoff);
+      const h = w * s;
+      acc += x[k] * h;
+      norm += h;
+    }
+    out[i] = norm !== 0 ? acc / norm : 0;
+  }
+  return out;
+}
+
+/** Sample rate the loops of an engine are built at: the highest rate among the mapped loop streams. */
+let LOOP_SR = 0;
+
 function loadPart(dir, streams, part) {
   return part.streams.map((entry, k) => {
     const e = typeof entry === 'number' ? { stream: entry } : entry;
     const s = streams[e.stream];
     if (!s) throw new Error(`Mapping references stream ${e.stream}, which does not exist`);
-    const x = toMono(readWav(join(dir, s.file)));
-    const durationS = x.length / s.sampleRate;
+    const sr = LOOP_SR || s.sampleRate;
+    const x = resample(toMono(readWav(join(dir, s.file))), s.sampleRate, sr);
+    const durationS = x.length / sr;
     const model = { durationS, rpmStart: e.rpmStart ?? part.rpmStart, rpmEnd: e.rpmEnd ?? part.rpmEnd, curve: e.curve ?? part.curve };
-    return { x, sr: s.sampleRate, durationS, model, gain: e.gain ?? part.gains?.[k] ?? 1, skip: e.skip ?? [] };
+    return { x, sr, durationS, model, gain: e.gain ?? part.gains?.[k] ?? 1, skip: e.skip ?? [] };
   });
 }
 
@@ -338,6 +399,10 @@ function importEngine(args, id) {
     return false;
   }
 
+  const loopStreams = [...mapping.on.streams, ...mapping.off.streams, mapping.idle, mapping.idle?.with]
+    .filter(Boolean).map((e) => streams[typeof e === 'number' ? e : e.stream]?.sampleRate ?? 0);
+  LOOP_SR = Math.max(...loopStreams);
+  if (new Set(loopStreams).size > 1) log(`${id}: loop streams have different sample rates (${[...new Set(loopStreams)].join(', ')} Hz) — resampling to ${LOOP_SR} Hz`);
   const parts = { on: loadPart(decodedDir, streams, mapping.on), off: loadPart(decodedDir, streams, mapping.off) };
   // Idle: either a recording at a known rpm ({stream, rpm}) or one played at its native pitch at the idle band ({stream, cycleS}).
   const idleRpm = mapping.idle ? (mapping.idle.rpm ?? profile.idleRPM) : 0;

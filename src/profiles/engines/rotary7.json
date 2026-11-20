@@ -29,27 +29,27 @@
     "finalDrive": 4.1,
     "tireRadiusM": 0.335,
     "shiftUpRPM": {
-      "gentle": 2900.0,
+      "gentle": 2900,
       "hard": 8350
     },
     "shiftDownRPM": {
-      "gentle": 1450.0,
-      "hard": 4200.0
+      "gentle": 1450,
+      "hard": 4200
     },
     "shiftDuration": 0.45,
     "minShiftInterval": 0.9,
-    "launchRPM": 4100.0
+    "launchRPM": 4100
   },
   "dynamics": {
     "engineResponse": 0.07,
-    "throttleSensitivity": 1.0,
+    "throttleSensitivity": 1,
     "fullThrottleAccel": 4.5
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/rotary7/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.7,
     "shiftBark": 0.6,
     "placeholderTone": {

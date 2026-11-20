@@ -1,0 +1,32 @@
+{
+  "profileId": "p60b40",
+  "verified": false,
+  "note": "AUTO-GENERATED GUESS. Listen to audio-source/decoded/<id>/*.wav, then set which streams are the on-load (accel) and off-load (decel) RPM sweeps, the RPM they start/end at, and set verified=true.",
+  "on": {
+    "streams": [
+      2,
+      6
+    ],
+    "gains": [
+      1,
+      0.85
+    ],
+    "rpmStart": 1000,
+    "rpmEnd": 9200,
+    "curve": null
+  },
+  "off": {
+    "streams": [
+      1,
+      5
+    ],
+    "gains": [
+      1,
+      0.85
+    ],
+    "rpmStart": 1000,
+    "rpmEnd": 9200,
+    "curve": null
+  },
+  "pops": []
+}

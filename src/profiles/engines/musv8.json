@@ -24,33 +24,33 @@
       2.36,
       1.69,
       1.31,
-      1.0,
+      1,
       0.79
     ],
     "finalDrive": 3.3,
     "tireRadiusM": 0.33,
     "shiftUpRPM": {
-      "gentle": 2500.0,
+      "gentle": 2500,
       "hard": 7050
     },
     "shiftDownRPM": {
-      "gentle": 1300.0,
-      "hard": 3600.0
+      "gentle": 1300,
+      "hard": 3600
     },
     "shiftDuration": 0.38,
     "minShiftInterval": 0.9,
-    "launchRPM": 3500.0
+    "launchRPM": 3500
   },
   "dynamics": {
     "engineResponse": 0.1,
-    "throttleSensitivity": 1.0,
+    "throttleSensitivity": 1,
     "fullThrottleAccel": 4.5
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/musv8/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.8,
     "shiftBark": 0.6,
     "placeholderTone": {

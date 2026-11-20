@@ -5,7 +5,7 @@
   "category": "V8",
   "aspiration": "twin-turbo",
   "cylinders": 8,
-  "displacementL": 6.0,
+  "displacementL": 6,
   "source": {
     "configLabel": "Brbs 850 6.0L V8-TT",
     "soundName": "brabus850",
@@ -31,27 +31,27 @@
     "finalDrive": 3.9,
     "tireRadiusM": 0.345,
     "shiftUpRPM": {
-      "gentle": 2300.0,
+      "gentle": 2300,
       "hard": 6650
     },
     "shiftDownRPM": {
-      "gentle": 1090.0,
-      "hard": 3400.0
+      "gentle": 1090,
+      "hard": 3400
     },
     "shiftDuration": 0.2,
     "minShiftInterval": 0.9,
-    "launchRPM": 3300.0
+    "launchRPM": 3300
   },
   "dynamics": {
     "engineResponse": 0.11,
-    "throttleSensitivity": 1.0,
+    "throttleSensitivity": 1,
     "fullThrottleAccel": 4.5
   },
   "audio": {
-    "converted": false,
+    "converted": true,
     "manifest": "audio/brabus850/manifest.json",
-    "volume": 1.0,
-    "pitch": 1.0,
+    "volume": 1,
+    "pitch": 1,
     "overrunPops": 0.9,
     "shiftBark": 0.7,
     "placeholderTone": {

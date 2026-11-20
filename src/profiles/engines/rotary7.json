@@ -1,0 +1,60 @@
+{
+  "id": "rotary7",
+  "name": "Mzd 13B-REW 1.3L Twin-Rotor",
+  "description": "1.3-litre twin-rotor Wankel (13B-REW). Two rotors fire like a 4-cylinder per shaft turn.",
+  "category": "Rotary",
+  "aspiration": "twin-turbo",
+  "cylinders": 4,
+  "displacementL": 1.3,
+  "source": {
+    "configLabel": "Mzd 13B-REW 1.3L Twin-Rotor",
+    "soundName": "rotary7",
+    "awc": "sfx/dlc_rotary7/rotary7.awc",
+    "audioConfig": [
+      "audioconfig/rotary7_game.dat151.rel",
+      "audioconfig/rotary7_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 1000,
+  "redlineRPM": 8500,
+  "limiterRPM": 8800,
+  "gearbox": {
+    "gearRatios": [
+      2.93,
+      1.95,
+      1.43,
+      1.12,
+      0.89
+    ],
+    "finalDrive": 4.1,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2900.0,
+      "hard": 8350
+    },
+    "shiftDownRPM": {
+      "gentle": 1450.0,
+      "hard": 4200.0
+    },
+    "shiftDuration": 0.45,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4100.0
+  },
+  "dynamics": {
+    "engineResponse": 0.07,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/rotary7/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.7,
+    "shiftBark": 0.6,
+    "placeholderTone": {
+      "brightness": 0.85,
+      "roughness": 0.25
+    }
+  }
+}

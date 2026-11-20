@@ -1,0 +1,62 @@
+{
+  "id": "shonen",
+  "name": "SHONEN",
+  "description": "Sound bank \"shonen\". Engine type is not stated in the source repository; generic tuning.",
+  "category": "Unknown",
+  "aspiration": "unknown",
+  "cylinders": 4,
+  "displacementL": null,
+  "source": {
+    "configLabel": "shonen",
+    "soundName": "shonen",
+    "awc": "sfx/dlc_shonen/shonen.awc",
+    "audioConfig": [
+      "audioconfig/shonen_game.dat151.rel",
+      "audioconfig/shonen_sounds.dat54.rel",
+      "audioconfig/shonen_amp.dat10.rel"
+    ]
+  },
+  "idleRPM": 900,
+  "redlineRPM": 7500,
+  "limiterRPM": 7700,
+  "gearbox": {
+    "gearRatios": [
+      3.83,
+      2.36,
+      1.69,
+      1.31,
+      1.0,
+      0.79
+    ],
+    "finalDrive": 3.3,
+    "tireRadiusM": 0.33,
+    "shiftUpRPM": {
+      "gentle": 2600.0,
+      "hard": 7350
+    },
+    "shiftDownRPM": {
+      "gentle": 1300.0,
+      "hard": 3800.0
+    },
+    "shiftDuration": 0.38,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3600.0
+  },
+  "dynamics": {
+    "engineResponse": 0.09,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/shonen/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.3,
+    "shiftBark": 0.4,
+    "placeholderTone": {
+      "brightness": 0.6,
+      "roughness": 0.5
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "id": "avesv",
+  "name": "AVESV",
+  "description": "Naturally aspirated V12 sound bank \"avesv\". Spec values estimated from the bank name (Aventador SV-style V12).",
+  "category": "V12",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 12,
+  "displacementL": 6.5,
+  "source": {
+    "configLabel": "avesv",
+    "soundName": "avesv",
+    "awc": "sfx/dlc_avesv/avesv.awc",
+    "audioConfig": [
+      "audioconfig/avesv_game.dat151.rel",
+      "audioconfig/avesv_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 1000,
+  "redlineRPM": 8500,
+  "limiterRPM": 8700,
+  "gearbox": {
+    "gearRatios": [
+      3.13,
+      2.37,
+      1.83,
+      1.45,
+      1.17,
+      0.96,
+      0.78
+    ],
+    "finalDrive": 3.9,
+    "tireRadiusM": 0.345,
+    "shiftUpRPM": {
+      "gentle": 2900.0,
+      "hard": 8350
+    },
+    "shiftDownRPM": {
+      "gentle": 1450.0,
+      "hard": 4200.0
+    },
+    "shiftDuration": 0.2,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4100.0
+  },
+  "dynamics": {
+    "engineResponse": 0.08,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/avesv/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.6,
+    "shiftBark": 0.8,
+    "placeholderTone": {
+      "brightness": 0.75,
+      "roughness": 0.35
+    }
+  }
+}

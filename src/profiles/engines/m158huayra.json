@@ -1,0 +1,62 @@
+{
+  "id": "m158huayra",
+  "name": "Pgni-AMG M158 6.0L V12TT",
+  "description": "6.0-litre twin-turbo V12 (AMG M158).",
+  "category": "V12",
+  "aspiration": "twin-turbo",
+  "cylinders": 12,
+  "displacementL": 6.0,
+  "source": {
+    "configLabel": "Pgni-AMG M158 6.0L V12TT",
+    "soundName": "m158huayra",
+    "awc": "sfx/dlc_m158huayra/m158huayra.awc",
+    "audioConfig": [
+      "audioconfig/m158huayra_game.dat151.rel",
+      "audioconfig/m158huayra_sounds.dat54.rel",
+      "audioconfig/m158huayra_amp.dat10.rel"
+    ]
+  },
+  "idleRPM": 850,
+  "redlineRPM": 6800,
+  "limiterRPM": 7000,
+  "gearbox": {
+    "gearRatios": [
+      2.92,
+      2.06,
+      1.62,
+      1.32,
+      1.11,
+      0.96
+    ],
+    "finalDrive": 3.7,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2300.0,
+      "hard": 6650
+    },
+    "shiftDownRPM": {
+      "gentle": 1230.0,
+      "hard": 3400.0
+    },
+    "shiftDuration": 0.12,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3300.0
+  },
+  "dynamics": {
+    "engineResponse": 0.11,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/m158huayra/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.6,
+    "shiftBark": 0.8,
+    "placeholderTone": {
+      "brightness": 0.6,
+      "roughness": 0.3
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "id": "m297zonda",
+  "name": "Pgni-AMG M297 7.3L V12",
+  "description": "7.3-litre naturally aspirated V12 (AMG M297).",
+  "category": "V12",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 12,
+  "displacementL": 7.3,
+  "source": {
+    "configLabel": "Pgni-AMG M297 7.3L V12",
+    "soundName": "m297zonda",
+    "awc": "sfx/dlc_m297zonda/m297zonda.awc",
+    "audioConfig": [
+      "audioconfig/m297zonda_game.dat151.rel",
+      "audioconfig/m297zonda_sounds.dat54.rel",
+      "audioconfig/m297zonda_amp.dat10.rel"
+    ]
+  },
+  "idleRPM": 900,
+  "redlineRPM": 7800,
+  "limiterRPM": 8000,
+  "gearbox": {
+    "gearRatios": [
+      2.92,
+      2.06,
+      1.62,
+      1.32,
+      1.11,
+      0.96
+    ],
+    "finalDrive": 3.7,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2600.0,
+      "hard": 7650
+    },
+    "shiftDownRPM": {
+      "gentle": 1300.0,
+      "hard": 3900.0
+    },
+    "shiftDuration": 0.12,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3700.0
+  },
+  "dynamics": {
+    "engineResponse": 0.09,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/m297zonda/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.5,
+    "shiftBark": 0.9,
+    "placeholderTone": {
+      "brightness": 0.8,
+      "roughness": 0.3
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "sestov10",
+  "name": "SESTOV10",
+  "description": "Sound bank \"sestov10\". Spec values estimated from the bank name (Sesto Elemento-style V10).",
+  "category": "V10",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 10,
+  "displacementL": 5.2,
+  "source": {
+    "configLabel": "sestov10",
+    "soundName": "sestov10",
+    "awc": "sfx/dlc_sestov10/sestov10.awc",
+    "audioConfig": [
+      "audioconfig/sestov10_game.dat151.rel",
+      "audioconfig/sestov10_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 1000,
+  "redlineRPM": 8500,
+  "limiterRPM": 8700,
+  "gearbox": {
+    "gearRatios": [
+      2.92,
+      2.06,
+      1.62,
+      1.32,
+      1.11,
+      0.96
+    ],
+    "finalDrive": 3.7,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2900.0,
+      "hard": 8350
+    },
+    "shiftDownRPM": {
+      "gentle": 1450.0,
+      "hard": 4200.0
+    },
+    "shiftDuration": 0.12,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4100.0
+  },
+  "dynamics": {
+    "engineResponse": 0.08,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/sestov10/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.6,
+    "shiftBark": 0.8,
+    "placeholderTone": {
+      "brightness": 0.85,
+      "roughness": 0.45
+    }
+  }
+}

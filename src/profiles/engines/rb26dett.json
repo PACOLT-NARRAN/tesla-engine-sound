@@ -1,0 +1,61 @@
+{
+  "id": "rb26dett",
+  "name": "Nian RB26DETT 2.6L I6-TT",
+  "description": "2.6-litre twin-turbo inline-six (RB26DETT).",
+  "category": "Inline-6",
+  "aspiration": "twin-turbo",
+  "cylinders": 6,
+  "displacementL": 2.6,
+  "source": {
+    "configLabel": "Nian RB26DETT 2.6L I6-TT",
+    "soundName": "rb26dett",
+    "awc": "sfx/dlc_rb26dett/rb26dett.awc",
+    "audioConfig": [
+      "audioconfig/rb26dett_game.dat151.rel",
+      "audioconfig/rb26dett_sounds.dat54.rel",
+      "audioconfig/rb26dett_amp.dat10.rel"
+    ]
+  },
+  "idleRPM": 900,
+  "redlineRPM": 8000,
+  "limiterRPM": 8200,
+  "gearbox": {
+    "gearRatios": [
+      2.93,
+      1.95,
+      1.43,
+      1.12,
+      0.89
+    ],
+    "finalDrive": 4.1,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2700.0,
+      "hard": 7850
+    },
+    "shiftDownRPM": {
+      "gentle": 1300.0,
+      "hard": 4000.0
+    },
+    "shiftDuration": 0.45,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3800.0
+  },
+  "dynamics": {
+    "engineResponse": 0.09,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/rb26dett/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.6,
+    "shiftBark": 0.5,
+    "placeholderTone": {
+      "brightness": 0.65,
+      "roughness": 0.35
+    }
+  }
+}

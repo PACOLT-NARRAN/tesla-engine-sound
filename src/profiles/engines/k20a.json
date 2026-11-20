@@ -1,0 +1,63 @@
+{
+  "id": "k20a",
+  "name": "Hnd K20A 2.0L I4",
+  "description": "2.0-litre high-revving naturally aspirated inline-four (K20A).",
+  "category": "Inline-4",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 4,
+  "displacementL": 2,
+  "source": {
+    "configLabel": "Hnd K20A 2.0L I4",
+    "soundName": "k20a",
+    "awc": "sfx/dlc_k20a/k20a.awc",
+    "audioConfig": [
+      "audioconfig/k20a_game.dat151.rel",
+      "audioconfig/k20a_sounds.dat54.rel",
+      "audioconfig/k20a_amp.dat10.rel"
+    ]
+  },
+  "idleRPM": 850,
+  "redlineRPM": 8400,
+  "limiterRPM": 8600,
+  "gearbox": {
+    "gearRatios": [
+      3.83,
+      2.36,
+      1.69,
+      1.31,
+      1,
+      0.79
+    ],
+    "finalDrive": 3.3,
+    "tireRadiusM": 0.33,
+    "shiftUpRPM": {
+      "gentle": 2700,
+      "hard": 8250
+    },
+    "shiftDownRPM": {
+      "gentle": 1230,
+      "hard": 4200
+    },
+    "shiftDuration": 0.38,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4000
+  },
+  "dynamics": {
+    "engineResponse": 0.07,
+    "throttleSensitivity": 1,
+    "fullThrottleAccel": 4
+  },
+  "audio": {
+    "converted": true,
+    "manifest": "audio/k20a/manifest.json",
+    "volume": 1,
+    "pitch": 1,
+    "overrunPops": 0.35,
+    "shiftBark": 0.8,
+    "placeholderTone": {
+      "brightness": 0.8,
+      "roughness": 0.3
+    },
+    "turbo": 0.7
+  }
+}

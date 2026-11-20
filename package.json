@@ -1,0 +1,30 @@
+{
+  "name": "tesla-engine-sound",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Virtual combustion-engine soundtrack for EVs, driven by browser GPS. Racing HUD for the Tesla browser.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test --disable-warning=ExperimentalWarning \"tests/**/*.test.ts\" \"tools/audio-import/tests/*.test.mjs\"",
+    "audio:import": "node tools/audio-import/import-awc.mjs"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.0"
+  }
+}

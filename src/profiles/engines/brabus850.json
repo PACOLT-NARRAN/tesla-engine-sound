@@ -1,0 +1,62 @@
+{
+  "id": "brabus850",
+  "name": "Brbs 850 6.0L V8-TT",
+  "description": "6.0-litre twin-turbo V8 (Brabus 850).",
+  "category": "V8",
+  "aspiration": "twin-turbo",
+  "cylinders": 8,
+  "displacementL": 6.0,
+  "source": {
+    "configLabel": "Brbs 850 6.0L V8-TT",
+    "soundName": "brabus850",
+    "awc": "sfx/dlc_brabus850/brabus850.awc",
+    "audioConfig": [
+      "audioconfig/brabus850_game.dat151.rel",
+      "audioconfig/brabus850_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 750,
+  "redlineRPM": 6800,
+  "limiterRPM": 7000,
+  "gearbox": {
+    "gearRatios": [
+      3.13,
+      2.37,
+      1.83,
+      1.45,
+      1.17,
+      0.96,
+      0.78
+    ],
+    "finalDrive": 3.9,
+    "tireRadiusM": 0.345,
+    "shiftUpRPM": {
+      "gentle": 2300.0,
+      "hard": 6650
+    },
+    "shiftDownRPM": {
+      "gentle": 1090.0,
+      "hard": 3400.0
+    },
+    "shiftDuration": 0.2,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3300.0
+  },
+  "dynamics": {
+    "engineResponse": 0.11,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/brabus850/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.9,
+    "shiftBark": 0.7,
+    "placeholderTone": {
+      "brightness": 0.5,
+      "roughness": 0.7
+    }
+  }
+}

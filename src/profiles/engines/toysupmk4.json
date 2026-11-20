@@ -1,0 +1,61 @@
+{
+  "id": "toysupmk4",
+  "name": "Tyta 2JZ-GTE 3.0L I6-T",
+  "description": "3.0-litre turbocharged inline-six (2JZ-GTE).",
+  "category": "Inline-6",
+  "aspiration": "turbo",
+  "cylinders": 6,
+  "displacementL": 3.0,
+  "source": {
+    "configLabel": "Tyta 2JZ-GTE 3.0L I6-T",
+    "soundName": "toysupmk4",
+    "awc": "sfx/dlc_toysupmk4/toysupmk4.awc",
+    "audioConfig": [
+      "audioconfig/toysupmk4_game.dat151.rel",
+      "audioconfig/toysupmk4_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 850,
+  "redlineRPM": 7000,
+  "limiterRPM": 7200,
+  "gearbox": {
+    "gearRatios": [
+      3.83,
+      2.36,
+      1.69,
+      1.31,
+      1.0,
+      0.79
+    ],
+    "finalDrive": 3.3,
+    "tireRadiusM": 0.33,
+    "shiftUpRPM": {
+      "gentle": 2400.0,
+      "hard": 6850
+    },
+    "shiftDownRPM": {
+      "gentle": 1230.0,
+      "hard": 3500.0
+    },
+    "shiftDuration": 0.38,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3400.0
+  },
+  "dynamics": {
+    "engineResponse": 0.1,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/toysupmk4/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.5,
+    "shiftBark": 0.5,
+    "placeholderTone": {
+      "brightness": 0.6,
+      "roughness": 0.35
+    }
+  }
+}

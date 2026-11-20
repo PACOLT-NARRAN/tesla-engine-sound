@@ -1,0 +1,62 @@
+{
+  "id": "ferrarif12",
+  "name": "FERRARIF12",
+  "description": "Sound bank \"ferrarif12\". Spec values estimated from the bank name (F12-style V12).",
+  "category": "V12",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 12,
+  "displacementL": 6.3,
+  "source": {
+    "configLabel": "ferrarif12",
+    "soundName": "ferrarif12",
+    "awc": "sfx/dlc_ferrarif12/ferrarif12.awc",
+    "audioConfig": [
+      "audioconfig/ferrarif12_game.dat151.rel",
+      "audioconfig/ferrarif12_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 1000,
+  "redlineRPM": 8700,
+  "limiterRPM": 8900,
+  "gearbox": {
+    "gearRatios": [
+      3.13,
+      2.37,
+      1.83,
+      1.45,
+      1.17,
+      0.96,
+      0.78
+    ],
+    "finalDrive": 3.9,
+    "tireRadiusM": 0.345,
+    "shiftUpRPM": {
+      "gentle": 2900.0,
+      "hard": 8550
+    },
+    "shiftDownRPM": {
+      "gentle": 1450.0,
+      "hard": 4400.0
+    },
+    "shiftDuration": 0.2,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4200.0
+  },
+  "dynamics": {
+    "engineResponse": 0.08,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/ferrarif12/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.55,
+    "shiftBark": 0.8,
+    "placeholderTone": {
+      "brightness": 0.85,
+      "roughness": 0.3
+    }
+  }
+}

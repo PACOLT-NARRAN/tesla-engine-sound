@@ -1,0 +1,63 @@
+{
+  "id": "gt3flat6",
+  "name": "Rsche RS 4.0L Flat-6",
+  "description": "4.0-litre naturally aspirated flat-six (RS).",
+  "category": "Flat-6",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 6,
+  "displacementL": 4.0,
+  "source": {
+    "configLabel": "Rsche RS 4.0L Flat-6",
+    "soundName": "gt3flat6",
+    "awc": "sfx/dlc_gt3flat6/gt3flat6.awc",
+    "audioConfig": [
+      "audioconfig/gt3flat6_game.dat151.rel",
+      "audioconfig/gt3flat6_sounds.dat54.rel",
+      "audioconfig/gt3flat6_amp.dat10.rel"
+    ]
+  },
+  "idleRPM": 900,
+  "redlineRPM": 9000,
+  "limiterRPM": 9200,
+  "gearbox": {
+    "gearRatios": [
+      3.13,
+      2.37,
+      1.83,
+      1.45,
+      1.17,
+      0.96,
+      0.78
+    ],
+    "finalDrive": 3.9,
+    "tireRadiusM": 0.345,
+    "shiftUpRPM": {
+      "gentle": 2900.0,
+      "hard": 8850
+    },
+    "shiftDownRPM": {
+      "gentle": 1300.0,
+      "hard": 4500.0
+    },
+    "shiftDuration": 0.2,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4300.0
+  },
+  "dynamics": {
+    "engineResponse": 0.07,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.0
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/gt3flat6/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.5,
+    "shiftBark": 0.7,
+    "placeholderTone": {
+      "brightness": 0.85,
+      "roughness": 0.45
+    }
+  }
+}

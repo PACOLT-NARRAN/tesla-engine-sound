@@ -1,0 +1,62 @@
+{
+  "id": "lambov10",
+  "name": "Aud/Lamb 5.2L V10",
+  "description": "5.2-litre naturally aspirated V10.",
+  "category": "V10",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 10,
+  "displacementL": 5.2,
+  "source": {
+    "configLabel": "Aud/Lamb 5.2L V10",
+    "soundName": "lambov10",
+    "awc": "sfx/dlc_lambov10/lambov10.awc",
+    "audioConfig": [
+      "audioconfig/lambov10_game.dat151.rel",
+      "audioconfig/lambov10_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 950,
+  "redlineRPM": 8500,
+  "limiterRPM": 8700,
+  "gearbox": {
+    "gearRatios": [
+      3.13,
+      2.37,
+      1.83,
+      1.45,
+      1.17,
+      0.96,
+      0.78
+    ],
+    "finalDrive": 3.9,
+    "tireRadiusM": 0.345,
+    "shiftUpRPM": {
+      "gentle": 2800.0,
+      "hard": 8350
+    },
+    "shiftDownRPM": {
+      "gentle": 1380.0,
+      "hard": 4200.0
+    },
+    "shiftDuration": 0.2,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4100.0
+  },
+  "dynamics": {
+    "engineResponse": 0.08,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/lambov10/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.55,
+    "shiftBark": 0.7,
+    "placeholderTone": {
+      "brightness": 0.8,
+      "roughness": 0.45
+    }
+  }
+}

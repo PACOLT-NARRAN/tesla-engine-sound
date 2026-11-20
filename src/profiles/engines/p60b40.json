@@ -1,0 +1,61 @@
+{
+  "id": "p60b40",
+  "name": "P60B40",
+  "description": "Sound bank \"p60b40\" (P60B40 racing V8). Spec values estimated from the bank name.",
+  "category": "V8",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 8,
+  "displacementL": 4.0,
+  "source": {
+    "configLabel": "p60b40",
+    "soundName": "p60b40",
+    "awc": "sfx/dlc_p60b40/p60b40.awc",
+    "audioConfig": [
+      "audioconfig/p60b40_game.dat151.rel",
+      "audioconfig/p60b40_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 1000,
+  "redlineRPM": 9000,
+  "limiterRPM": 9200,
+  "gearbox": {
+    "gearRatios": [
+      2.92,
+      2.06,
+      1.62,
+      1.32,
+      1.11,
+      0.96
+    ],
+    "finalDrive": 3.7,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 3000.0,
+      "hard": 8850
+    },
+    "shiftDownRPM": {
+      "gentle": 1450.0,
+      "hard": 4500.0
+    },
+    "shiftDuration": 0.12,
+    "minShiftInterval": 0.9,
+    "launchRPM": 4300.0
+  },
+  "dynamics": {
+    "engineResponse": 0.07,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.0
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/p60b40/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.7,
+    "shiftBark": 0.9,
+    "placeholderTone": {
+      "brightness": 0.85,
+      "roughness": 0.55
+    }
+  }
+}

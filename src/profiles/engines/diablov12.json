@@ -1,0 +1,60 @@
+{
+  "id": "diablov12",
+  "name": "DIABLOV12",
+  "description": "Sound bank \"diablov12\". Spec values estimated from the bank name (Diablo-style V12).",
+  "category": "V12",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 12,
+  "displacementL": 5.7,
+  "source": {
+    "configLabel": "diablov12",
+    "soundName": "diablov12",
+    "awc": "sfx/dlc_diablov12/diablov12.awc",
+    "audioConfig": [
+      "audioconfig/diablov12_game.dat151.rel",
+      "audioconfig/diablov12_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 950,
+  "redlineRPM": 7500,
+  "limiterRPM": 7700,
+  "gearbox": {
+    "gearRatios": [
+      2.93,
+      1.95,
+      1.43,
+      1.12,
+      0.89
+    ],
+    "finalDrive": 4.1,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2600.0,
+      "hard": 7350
+    },
+    "shiftDownRPM": {
+      "gentle": 1380.0,
+      "hard": 3800.0
+    },
+    "shiftDuration": 0.45,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3600.0
+  },
+  "dynamics": {
+    "engineResponse": 0.1,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/diablov12/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.45,
+    "shiftBark": 0.4,
+    "placeholderTone": {
+      "brightness": 0.65,
+      "roughness": 0.4
+    }
+  }
+}

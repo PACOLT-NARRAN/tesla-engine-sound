@@ -1,0 +1,61 @@
+{
+  "id": "murciev12",
+  "name": "MURCIEV12",
+  "description": "Sound bank \"murciev12\". Spec values estimated from the bank name (Murci\u00e9lago-style V12).",
+  "category": "V12",
+  "aspiration": "naturally-aspirated",
+  "cylinders": 12,
+  "displacementL": 6.5,
+  "source": {
+    "configLabel": "murciev12",
+    "soundName": "murciev12",
+    "awc": "sfx/dlc_murciev12/murciev12.awc",
+    "audioConfig": [
+      "audioconfig/murciev12_game.dat151.rel",
+      "audioconfig/murciev12_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 950,
+  "redlineRPM": 8000,
+  "limiterRPM": 8250,
+  "gearbox": {
+    "gearRatios": [
+      3.13,
+      2.21,
+      1.62,
+      1.26,
+      1.03,
+      0.86
+    ],
+    "finalDrive": 3.7,
+    "tireRadiusM": 0.34,
+    "shiftUpRPM": {
+      "gentle": 2700.0,
+      "hard": 7850
+    },
+    "shiftDownRPM": {
+      "gentle": 1380.0,
+      "hard": 4000.0
+    },
+    "shiftDuration": 0.32,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3800.0
+  },
+  "dynamics": {
+    "engineResponse": 0.09,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/murciev12/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.55,
+    "shiftBark": 0.6,
+    "placeholderTone": {
+      "brightness": 0.7,
+      "roughness": 0.4
+    }
+  }
+}

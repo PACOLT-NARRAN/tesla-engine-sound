@@ -1,0 +1,60 @@
+{
+  "id": "f40v8",
+  "name": "F40V8",
+  "description": "Sound bank \"f40v8\". Spec values estimated from the bank name (F40-style twin-turbo V8).",
+  "category": "V8",
+  "aspiration": "twin-turbo",
+  "cylinders": 8,
+  "displacementL": 2.9,
+  "source": {
+    "configLabel": "f40v8",
+    "soundName": "f40v8",
+    "awc": "sfx/dlc_f40v8/f40v8.awc",
+    "audioConfig": [
+      "audioconfig/f40v8_game.dat151.rel",
+      "audioconfig/f40v8_sounds.dat54.rel"
+    ]
+  },
+  "idleRPM": 1000,
+  "redlineRPM": 7750,
+  "limiterRPM": 7900,
+  "gearbox": {
+    "gearRatios": [
+      2.93,
+      1.95,
+      1.43,
+      1.12,
+      0.89
+    ],
+    "finalDrive": 4.1,
+    "tireRadiusM": 0.335,
+    "shiftUpRPM": {
+      "gentle": 2700.0,
+      "hard": 7600
+    },
+    "shiftDownRPM": {
+      "gentle": 1450.0,
+      "hard": 3900.0
+    },
+    "shiftDuration": 0.45,
+    "minShiftInterval": 0.9,
+    "launchRPM": 3700.0
+  },
+  "dynamics": {
+    "engineResponse": 0.1,
+    "throttleSensitivity": 1.0,
+    "fullThrottleAccel": 4.5
+  },
+  "audio": {
+    "converted": false,
+    "manifest": "audio/f40v8/manifest.json",
+    "volume": 1.0,
+    "pitch": 1.0,
+    "overrunPops": 0.75,
+    "shiftBark": 0.5,
+    "placeholderTone": {
+      "brightness": 0.6,
+      "roughness": 0.6
+    }
+  }
+}

@@ -344,8 +344,8 @@ export class EngineAudioEngine {
       g.setTargetAtTime(1.12, now, 0.02);
       g.setTargetAtTime(1, now + 0.12, 0.06);
     }
-    // Exhaust crack on every gear change (louder when shifting hard).
-    if (p.audio.shiftBark > 0) this.firePop(p.audio.shiftBark * (0.6 + 0.4 * clamp(throttle, 0, 1)));
+    // Exhaust crack on downshifts only (rev-match blip); upshifts stay clean.
+    if (direction === 'down' && p.audio.shiftBark > 0) this.firePop(p.audio.shiftBark * (0.6 + 0.4 * clamp(throttle, 0, 1)));
   }
 
   /** Dump-valve blow-off when the driver lifts right after a high-load pull. */

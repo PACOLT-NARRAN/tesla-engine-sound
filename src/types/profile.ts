@@ -48,7 +48,7 @@ export interface EngineAudioConfig {
   pitch: number;
   /** Overrun crackle / backfire on lift-off. 0 disables. */
   overrunPops: number;
-  /** Intensity of the exhaust crack on every gear change. 0 disables. */
+  /** Intensity of the exhaust crack on downshifts. 0 disables. */
   shiftBark: number;
   /** Blow-off (dump valve) level when lifting after high load, 0..1. Default 0.7; used only if the bank has blow-off sounds. */
   blowoff?: number;

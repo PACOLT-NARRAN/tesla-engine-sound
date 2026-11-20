@@ -133,5 +133,5 @@ and sums them (`idle.with.gain`, default 0.9).
 
 `audio.turbo` (0..1) adds a continuous synthesised whistle that fades in from ~25 % of the RPM range
 (full at ~65 %), pitch rising with RPM, 40 % quieter on overrun. Default: 0.5 for turbo / twin-turbo /
-twin-charged profiles, 0 otherwise. `audio.shiftBark` now fires an exhaust crack on every up- and
-downshift, louder at higher throttle.
+twin-charged profiles, 0 otherwise. `audio.shiftBark` fires an exhaust crack on downshifts only
+(upshifts stay clean), louder at higher throttle.

@@ -17,7 +17,7 @@ export interface InputControllerOptions {
 type Listen = Pick<EventTarget, 'addEventListener' | 'removeEventListener'>;
 
 interface WheelLike extends Event { deltaX: number; deltaY: number; deltaZ: number; deltaMode: number }
-interface KeyLike extends Event { key: string; code: string; repeat: boolean }
+interface KeyLike extends Event { key: string; code: string; repeat: boolean; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }
 interface PointerLike extends Event { pointerType?: string }
 interface ScrollBox { scrollTop: number; scrollHeight: number; clientHeight: number }
 
@@ -103,7 +103,9 @@ export class InputController {
 
   private onKeyDown(e: KeyLike): void {
     const base = { key: e.key, code: e.code };
-    const action = keyToAction(e.key);
+    // Browser shortcuts (Ctrl+Q, Cmd+M …) are never captured.
+    if (e.ctrlKey || e.metaKey || e.altKey) return void this.log(e, 'keydown', 'keyboard', base);
+    const action = keyToAction(e.key, e.code);
     if (!action) return void this.log(e, 'keydown', 'keyboard', base);
     if (this.o.isBlocked(e.target)) return void this.log(e, 'keydown', 'keyboard', { ...base, action, outcome: 'blocked', note: 'inside sheet' });
     if (!this.o.isDriveEnabled()) return void this.log(e, 'keydown', 'keyboard', { ...base, action, note: 'drive input off' });

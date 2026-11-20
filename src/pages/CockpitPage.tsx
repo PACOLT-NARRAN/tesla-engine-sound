@@ -8,6 +8,7 @@ import { GearIndicator } from '../components/GearIndicator.tsx';
 import { LoadMeters } from '../components/LoadMeters.tsx';
 import { Notices } from '../components/Notices.tsx';
 import { RevPedal } from '../components/RevPedal.tsx';
+import { ShiftPaddles } from '../components/ShiftPaddles.tsx';
 import { SettingsPanel } from '../components/SettingsPanel.tsx';
 import { ShiftLights } from '../components/ShiftLights.tsx';
 import { StatusStrip } from '../components/StatusStrip.tsx';
@@ -53,6 +54,7 @@ export function CockpitPage() {
         </section>
       </main>
       <RevPedal />
+      <ShiftPaddles />
       <Notices />
       <ControlDock onOpen={setPanel} profileName={name} developer={debug} />
       {panel === 'engines' && <Garage onClose={close} />}

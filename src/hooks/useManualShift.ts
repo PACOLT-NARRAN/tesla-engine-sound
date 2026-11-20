@@ -4,7 +4,7 @@ import { InputController } from '../input/InputController.ts';
 import { inputDiagnostics } from '../input/InputDiagnostics.ts';
 
 const inSheet = (t: EventTarget | null) =>
-  typeof Element !== 'undefined' && t instanceof Element && t.closest('.sheet-backdrop, .garage') !== null;
+  typeof Element !== 'undefined' && t instanceof Element && t.closest('.sheet-backdrop, .garage, input, textarea, select, [contenteditable]') !== null;
 
 /**
  * Drive-screen input: steering-wheel scroll / mouse wheel and arrow / page keys shift manually
@@ -24,7 +24,7 @@ export function useManualShift(
 
   useEffect(() => {
     const c = new InputController({
-      onAction: (a) => session.manualShift(a === 'shift-down' ? -1 : 1),
+      onAction: (a) => (a === 'toggle-transmission' ? session.toggleTransmission() : session.manualShift(a === 'shift-down' ? -1 : 1)),
       isDriveEnabled: () => enabledRef.current,
       isBlocked: inSheet,
       diagnostics: diagnostics ? inputDiagnostics : null,

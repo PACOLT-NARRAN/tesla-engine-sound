@@ -1,7 +1,19 @@
 import { useRef } from 'react';
 import { useFrame } from '../hooks/useFrame.ts';
 import { useSession } from '../hooks/SessionContext.ts';
+import type { MessageKey } from '../i18n/index.ts';
 import { useT } from '../i18n/useT.ts';
+
+/** How long a refused shift is shown under the gear (ms). */
+const FEEDBACK_MS = 1400;
+const REFUSED: Partial<Record<string, MessageKey>> = {
+  'over-rev': 'hud.fb.over-rev',
+  'would-stall': 'hud.fb.would-stall',
+  'at-limit': 'hud.fb.at-limit',
+  'out-of-range': 'hud.fb.out-of-range',
+  'no-gear': 'hud.fb.no-gear',
+  locked: 'hud.fb.locked',
+};
 
 export function GearIndicator() {
   const session = useSession();
@@ -12,15 +24,24 @@ export function GearIndicator() {
   const lastMode = useRef<string>('');
   const t = useT();
 
-  useFrame(() => {
-    const off = session.telemetry.drivetrain.manualOffset;
-    const m = off === 0 ? t('hud.gear') : t('hud.manual', { offset: `${off > 0 ? '+' : '−'}${Math.abs(off)}` });
-    if (m !== lastMode.current && mode.current && ref.current) {
+  useFrame((now) => {
+    const d = session.telemetry.drivetrain;
+    const fb = session.telemetry.lastShift;
+    const refusedKey = fb && now - fb.at < FEEDBACK_MS ? REFUSED[fb.outcome] : undefined;
+    const off = d.manualOffset;
+    const m = refusedKey
+      ? t(refusedKey)
+      : d.transmission === 'manual'
+        ? t('hud.manualMode')
+        : off === 0 ? t('hud.auto') : t('hud.autoOffset', { offset: `${off > 0 ? '+' : '−'}${Math.abs(off)}` });
+    const state = refusedKey ? 'refused' : d.transmission === 'manual' ? 'manual' : off !== 0 ? 'override' : 'auto';
+    if (m + state !== lastMode.current && mode.current && ref.current) {
       mode.current.textContent = m;
-      ref.current.dataset.manual = String(off !== 0);
-      lastMode.current = m;
+      ref.current.dataset.state = state;
+      ref.current.dataset.manual = String(state === 'manual' || state === 'override');
+      lastMode.current = m + state;
     }
-    const g = session.telemetry.drivetrain.gear;
+    const g = d.gear;
     if (g === last.current || !ref.current || !letter.current) return;
     const up = g > last.current;
     letter.current.textContent = g === 0 ? 'N' : String(g);
@@ -33,8 +54,8 @@ export function GearIndicator() {
   });
 
   return (
-    <div className="gear" ref={ref} data-neutral="true">
-      <small ref={mode}>{t('hud.gear')}</small>
+    <div className="gear" ref={ref} data-neutral="true" data-state="auto">
+      <small ref={mode}>{t('hud.auto')}</small>
       <span ref={letter}>N</span>
     </div>
   );

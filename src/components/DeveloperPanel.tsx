@@ -28,7 +28,8 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
       at: new Date().toISOString(),
       userAgent: navigator.userAgent,
       engine: { id: profile.id, displayName: engineTitle(profile), converted: profile.audio.converted, bankKind: s.bankKind },
-      settings: { units: s.units, gearing: s.gearing, shiftStyle: s.shiftStyle, theme: s.theme, language: s.language, locale: s.locale },
+      settings: { units: s.units, gearing: s.gearing, driveProfile: s.shiftStyle, transmission: s.transmission, theme: s.theme, language: s.language, locale: s.locale },
+      drive: { active: s.activeDrive, transmission: s.activeTransmission, entitlements: s.entitlements },
       session: { ignition: s.ignition, mode: s.mode, source: s.sourceStatus, motionQuality: s.motionQuality, audioStatus: s.audioStatus, audioIssue: s.audioIssue },
       // Speeds and quality only — never latitude/longitude.
       motion: { speed: m.speed, accel: m.accel, quality: m.quality, accuracy: m.raw.accuracy, speedSource: m.raw.speedSource, fixAge: m.fixAge },
@@ -63,6 +64,22 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
             <tr><th>audio issue</th><td>{s.audioIssue ? (s.audioIssue.kind === 'bank-failed' ? s.audioIssue.detail : s.audioIssue.kind) : '—'}</td></tr>
           </tbody>
         </table>
+        <h3>Entitlements</h3>
+        <table className="dev-table">
+          <tbody>
+            <tr><th>plan</th><td>{s.entitlements.plan}{s.entitlements.earlyAccess ? ' (early access)' : ''}{s.entitlements.simulated ? ' (simulated)' : ''}</td></tr>
+            <tr><th>drive profile</th><td>selected {s.shiftStyle} → running {s.activeDrive.id}{s.activeDrive.locked ? (s.activeDrive.preview ? ' (locked, demo preview)' : ' (locked, fallback)') : ''}</td></tr>
+            <tr><th>gearbox</th><td>selected {s.transmission} → running {s.activeTransmission}</td></tr>
+          </tbody>
+        </table>
+        <div className="setting-row">
+          <span>Simulate plan</span>
+          <div className="segmented" data-testid="plan-sim">
+            {(['auto', 'free', 'pro'] as const).map((p) => (
+              <button key={p} className={s.planOverride === p ? 'on' : ''} aria-pressed={s.planOverride === p} onClick={() => session.setPlanOverride(p)}>{p.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
         <InputDiagnosticsSection />
         <h3>Local storage</h3>
         <table className="dev-table">

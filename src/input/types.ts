@@ -6,7 +6,7 @@
  */
 
 /** What the driver asked for. More actions (E/Q/M, mode toggle) arrive with manual mode. */
-export type DriveAction = 'shift-down' | 'shift-up';
+export type DriveAction = 'shift-down' | 'shift-up' | 'toggle-transmission';
 
 /**
  * Which adapter produced / observed an event.
@@ -28,6 +28,10 @@ export type ShiftOutcome =
   | 'no-gear' // car standing / neutral: there is no automatic gear to offset
   | 'at-limit' // already two gears below / above the automatic choice
   | 'out-of-range' // first / top gear, or the gear would pass the rev limiter
+  | 'over-rev' // manual: downshift would pass the rev limiter
+  | 'would-stall' // manual: upshift would drop below idle
+  | 'locked' // needs REVLINE PRO
+  | 'switched' // automatic ↔ manual changed
   | 'debounced' // too soon after the previous step of the same gesture
   | 'blocked'; // a settings sheet is open, or driving input is disabled
 

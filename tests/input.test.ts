@@ -21,6 +21,10 @@ test('direction: down = shift down, up = shift up', () => {
   assert.equal(keyToAction('ArrowDown'), 'shift-down');
   assert.equal(keyToAction('PageUp'), 'shift-up');
   assert.equal(keyToAction('a'), null);
+  assert.equal(keyToAction('e'), 'shift-up');
+  assert.equal(keyToAction('Q'), 'shift-down');
+  assert.equal(keyToAction('m'), 'toggle-transmission');
+  assert.equal(keyToAction('ě', 'KeyE'), 'shift-up', 'Czech keyboard layout: physical key');
 });
 
 test('accumulator: small deltas add up to one notch', () => {
@@ -219,6 +223,11 @@ test('developer options persist and sanitise', () => {
   const backend = createMemoryBackend({ 'revline.developer.v1': JSON.stringify({ v: 1, data: { scrollTrap: 'yes' } }) });
   const store = new LocalStore(backend);
   assert.equal(store.load(DEV_OPTIONS_SCHEMA).value.scrollTrap, false);
-  store.save(DEV_OPTIONS_SCHEMA, { scrollTrap: true });
+  store.save(DEV_OPTIONS_SCHEMA, { scrollTrap: true, plan: 'free' as const });
   assert.equal(new LocalStore(backend).load(DEV_OPTIONS_SCHEMA).value.scrollTrap, true);
+  assert.equal(new LocalStore(backend).load(DEV_OPTIONS_SCHEMA).value.plan, 'free');
+  const v1 = new LocalStore(createMemoryBackend({ 'revline.developer.v1': JSON.stringify({ v: 1, data: { scrollTrap: true } }) })).load(DEV_OPTIONS_SCHEMA);
+  assert.equal(v1.value.plan, 'auto');
+  assert.equal(v1.value.scrollTrap, true);
+  assert.equal(v1.outcome, 'migrated');
 });

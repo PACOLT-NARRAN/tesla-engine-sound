@@ -1,4 +1,5 @@
 import type { DrivetrainEvent, DrivetrainState } from '../types/drivetrain.ts';
+import type { DriveProfileConfig } from '../drivetrain/driveProfiles.ts';
 import type { EngineProfile } from '../types/profile.ts';
 import { clamp } from '../utils/math.ts';
 import { bandPlaybackRate, bandWeights, engineLevel, loadGains, toneCutoffHz } from './layerMix.ts';
@@ -69,6 +70,21 @@ export class EngineAudioEngine {
   private boost = 0;
   private lastUpdateAt = 0;
   private stateListener: ((s: AudioContextState) => void) | null = null;
+  /** Drive Profile: multiplier on parameter smoothing, and off-throttle (engine braking) level. */
+  private smoothing = 1;
+  private offLevel = 1;
+
+  /** Drive Profile sound behaviour: transition smoothing and engine-braking loudness. */
+  setDriveTuning(d: Pick<DriveProfileConfig, 'audioTransitionSmoothing' | 'engineBraking'>): void {
+    this.smoothing = clamp(d.audioTransitionSmoothing, 0.5, 2.5);
+    // SPORT (0.65) = 1.0, the level used before Drive Profiles existed.
+    this.offLevel = 0.53 + 0.72 * clamp(d.engineBraking, 0, 1);
+  }
+
+  /** Updated tuning of the engine that is already playing (same id), without restarting it. */
+  setProfile(p: EngineProfile): void {
+    if (this.profile && this.profile.id === p.id) this.profile = p;
+  }
 
   get context(): AudioContext | null {
     return this.ctx;
@@ -148,6 +164,7 @@ export class EngineAudioEngine {
     const p = this.profile;
     if (!ctx || !v || !p) return;
     const now = ctx.currentTime;
+    const k = this.smoothing;
 
     // RPM bands: crossfade + pitch.
     bandWeights(s.rpm, v.bandRpms, this.weights);
@@ -155,16 +172,16 @@ export class EngineAudioEngine {
       const layer = v.layers[i] as Layer;
       const w = this.weights[i] ?? 0;
       if (Math.abs(w - layer.lastWeight) > 0.002 || (w === 0 && layer.lastWeight !== 0)) {
-        layer.onGain.gain.setTargetAtTime(w, now, TC_GAIN);
-        layer.offGain.gain.setTargetAtTime(w, now, TC_GAIN);
+        layer.onGain.gain.setTargetAtTime(w, now, TC_GAIN * k);
+        layer.offGain.gain.setTargetAtTime(w, now, TC_GAIN * k);
         layer.lastWeight = w;
       }
       // Only retune audible layers (and those about to become audible).
       if (w > 0 || layer.lastRate === 0) {
         const rate = bandPlaybackRate(s.rpm, layer.rpm, p.audio.pitch);
         if (Math.abs(rate - layer.lastRate) > 0.0005) {
-          layer.onSrc.playbackRate.setTargetAtTime(rate, now, TC_RATE);
-          layer.offSrc.playbackRate.setTargetAtTime(rate, now, TC_RATE);
+          layer.onSrc.playbackRate.setTargetAtTime(rate, now, TC_RATE * k);
+          layer.offSrc.playbackRate.setTargetAtTime(rate, now, TC_RATE * k);
           layer.lastRate = rate;
         }
       }
@@ -172,9 +189,9 @@ export class EngineAudioEngine {
 
     // Load: on-throttle vs. overrun layers, tone, level.
     const lg = loadGains(s.load, s.overrun);
-    v.onBus.gain.setTargetAtTime(lg.on, now, TC_GAIN * 1.5);
-    v.offBus.gain.setTargetAtTime(lg.off, now, TC_GAIN * 1.5);
-    this.tone.frequency.setTargetAtTime(toneCutoffHz(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun), now, TC_TONE);
+    v.onBus.gain.setTargetAtTime(lg.on, now, TC_GAIN * 1.5 * k);
+    v.offBus.gain.setTargetAtTime(lg.off * this.offLevel, now, TC_GAIN * 1.5 * k);
+    this.tone.frequency.setTargetAtTime(toneCutoffHz(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun), now, TC_TONE * k);
     const level = s.running ? engineLevel(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun) * p.audio.volume : 0;
     if (Math.abs(level - this.lastLevel) > 0.003) {
       this.level.gain.setTargetAtTime(level, now, s.running ? 0.08 : 0.35);

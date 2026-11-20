@@ -218,17 +218,6 @@ test('REV pedal free-revs when stationary and crackles on release', () => {
   assert.ok(dt.state.rpm < p.idleRPM * 1.3, 'falls back to idle');
 });
 
-test('shift styles raise the relaxed shift points; comfort leaves the profile untouched', async () => {
-  const { withShiftStyle } = await import('../src/core/settings.ts');
-  const p = testProfile();
-  assert.equal(withShiftStyle(p, 'comfort'), p);
-  const sport = withShiftStyle(p, 'sport');
-  const track = withShiftStyle(p, 'track');
-  assert.ok(sport.gearbox.shiftUpRPM.gentle > p.gearbox.shiftUpRPM.gentle);
-  assert.ok(track.gearbox.shiftUpRPM.gentle > sport.gearbox.shiftUpRPM.gentle);
-  assert.equal(track.gearbox.shiftUpRPM.hard, p.gearbox.shiftUpRPM.hard);
-});
-
 test('manualShift reports why a request was refused', () => {
   const dt = new VirtualDrivetrain(testProfile());
   assert.equal(dt.manualShift(-1), 'not-running');

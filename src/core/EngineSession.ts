@@ -15,7 +15,9 @@ import { FAVORITES_SCHEMA, RECENT_SCHEMA, pushRecent, reconcileIds, toggleFavori
 import { DEV_OPTIONS_SCHEMA } from '../input/devOptions.ts';
 import type { ShiftOutcome } from '../input/types.ts';
 import { LocalStore, type StoredSchema } from '../storage/storage.ts';
-import { settingsSchema, withGearing, withShiftStyle, type Gearing, type Settings, type ShiftStyle, type Theme } from './settings.ts';
+import { settingsSchema, withGearing, type Gearing, type Settings, type ShiftStyle, type Theme, type Transmission } from './settings.ts';
+import { applyDriveProfile, getDriveProfile, type DriveProfileId } from '../drivetrain/driveProfiles.ts';
+import { canUseManual, effectiveDriveProfile, resolveEntitlements, type Entitlements, type PlanOverride } from '../entitlements/entitlements.ts';
 import { PREVIEW_SECONDS, revPedalAt } from './preview.ts';
 import { Store } from './Store.ts';
 
@@ -42,6 +44,13 @@ export interface SessionState extends Settings {
   scrollTrap: boolean;
   /** Garage preview in progress (only while the ignition is off). */
   preview: { id: string; status: 'loading' | 'playing' } | null;
+  /** Developer Mode plan simulator ('auto' = real plan). */
+  planOverride: PlanOverride;
+  entitlements: Entitlements;
+  /** Drive Profile actually running (a locked choice falls back to COMFORT on a GPS drive). */
+  activeDrive: { id: DriveProfileId; locked: boolean; preview: boolean };
+  /** Gearbox actually running (manual needs PRO on a GPS drive). */
+  activeTransmission: Transmission;
 }
 
 export type ResetScope = 'favorites' | 'recent' | 'all';
@@ -52,6 +61,8 @@ export interface Telemetry {
   drivetrain: DrivetrainState;
   /** Increments on every simulation tick. */
   frame: number;
+  /** Last shift request and its result, for short HUD feedback (performance.now ms). */
+  lastShift: { outcome: ShiftOutcome; at: number } | null;
 }
 
 const TICK_MS = 20;
@@ -92,8 +103,14 @@ export class EngineSession {
     const known = new Set(ENGINE_PROFILES.map((p) => p.id));
     const favorites = this.loadIdList(FAVORITES_SCHEMA, known);
     const recentEngines = this.loadIdList(RECENT_SCHEMA, known);
-    const { scrollTrap } = storage.load(DEV_OPTIONS_SCHEMA).value;
-    this.drivetrain = new VirtualDrivetrain(withShiftStyle(withGearing(this.profile, settings.gearing), settings.shiftStyle));
+    const { scrollTrap, plan: planOverride } = storage.load(DEV_OPTIONS_SCHEMA).value;
+    const entitlements = resolveEntitlements(planOverride);
+    const activeDrive = effectiveDriveProfile(entitlements, settings.shiftStyle, 'gps');
+    const activeTransmission: Transmission = settings.transmission === 'manual' && canUseManual(entitlements, 'gps') ? 'manual' : 'auto';
+    const drive = getDriveProfile(activeDrive.id);
+    this.drivetrain = new VirtualDrivetrain(applyDriveProfile(withGearing(this.profile, settings.gearing), drive), drive);
+    this.drivetrain.setTransmission(activeTransmission);
+    this.audio.setDriveTuning(drive);
     this.loader = new SoundBankLoader(baseUrl);
     this.store = new Store<SessionState>({
       ...settings,
@@ -101,8 +118,9 @@ export class EngineSession {
       audioStatus: 'idle', bankKind: null, audioIssue: null,
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
       favorites, recentEngines, locale, scrollTrap, preview: null,
+      planOverride, entitlements, activeDrive, activeTransmission,
     });
-    this.telemetry = { motion: this.estimator.sample(Date.now()), drivetrain: this.drivetrain.state, frame: 0 };
+    this.telemetry = { motion: this.estimator.sample(Date.now()), drivetrain: this.drivetrain.state, frame: 0, lastShift: null };
 
     this.audio.setVolume(settings.volume);
     // Preload the selected engine's sound before the driver presses START.
@@ -149,7 +167,7 @@ export class EngineSession {
     this.store.set({ ignition: 'starting', audioStatus: 'loading' });
     this.markUsed(this.profile.id);
     const bank = await this.bankFor(this.profile);
-    this.audio.start(bank, this.profile, { ignition: true });
+    this.audio.start(bank, this.geared(this.profile), { ignition: true });
     this.drivetrain.setProfile(this.geared(this.profile));
     this.drivetrain.ignite();
     this.startLoop();
@@ -169,6 +187,7 @@ export class EngineSession {
       this.audio.stop();
     }, 700);
     this.store.set({ ignition: 'off', audioStatus: 'ready', mode: 'gps', sourceStatus: { kind: 'idle' } });
+    this.applyDrive();
   }
 
   async resumeAudio(): Promise<void> {
@@ -192,7 +211,7 @@ export class EngineSession {
       const bank = await this.bankFor(profile);
       if (token !== this.profileToken) return;
       this.drivetrain.setProfile(this.geared(profile));
-      this.audio.start(bank, profile);
+      this.audio.start(bank, this.geared(profile));
       this.store.set({ audioStatus: 'running', bankKind: bank.kind });
     } else {
       this.drivetrain.setProfile(this.geared(profile));
@@ -224,9 +243,9 @@ export class EngineSession {
     const bank = await this.bankFor(profile);
     if (token !== this.previewToken || this.store.get().ignition !== 'off') return;
     this.stopLoop(); // a just-switched-off engine must not keep driving the audio
-    const dt = new VirtualDrivetrain(this.geared(profile));
+    const dt = new VirtualDrivetrain(this.geared(profile), getDriveProfile(this.store.get().activeDrive.id));
     dt.ignite();
-    this.audio.start(bank, profile, { ignition: true });
+    this.audio.start(bank, this.geared(profile), { ignition: true });
     void this.audio.resume().catch(() => undefined);
     this.store.set({ preview: { id, status: 'playing' } });
     const step = TICK_MS / 1000;
@@ -298,13 +317,14 @@ export class EngineSession {
   setGearing(gearing: Gearing): void {
     this.store.set({ gearing });
     this.persist();
-    this.drivetrain.setProfile(this.geared(this.profile));
+    this.applyDrive();
   }
 
+  /** Drive Profile (COMFORT / SPORT / TRACK). A locked choice is kept and previewable in Demo. */
   setShiftStyle(shiftStyle: ShiftStyle): void {
     this.store.set({ shiftStyle });
     this.persist();
-    this.drivetrain.setProfile(this.geared(this.profile));
+    this.applyDrive();
   }
 
   setTheme(theme: Theme): void {
@@ -345,13 +365,13 @@ export class EngineSession {
     const locale = browserLanguage();
     this.store.set({
       volume: d.volume, units: d.units, demoScenarioId: d.demoScenarioId, demoNoise: d.demoNoise,
-      demoNoCoordsSpeed: d.demoNoCoordsSpeed, gearing: d.gearing, shiftStyle: d.shiftStyle, theme: d.theme,
-      language: null, locale, scrollTrap: false,
+      demoNoCoordsSpeed: d.demoNoCoordsSpeed, gearing: d.gearing, shiftStyle: d.shiftStyle, transmission: d.transmission, theme: d.theme,
+      language: null, locale, scrollTrap: false, planOverride: 'auto',
     });
     this.audio.setVolume(d.volume);
     applyTheme(d.theme);
     applyLanguage(locale);
-    this.drivetrain.setProfile(this.geared(this.profile));
+    this.applyDrive();
     // Settings key stays removed until the user changes something.
   }
 
@@ -362,15 +382,65 @@ export class EngineSession {
 
   /** Steering-wheel scroll / keys: one gear down (-1) or up (+1) from what the automatic chose. */
   manualShift(direction: -1 | 1): ShiftOutcome {
-    if (this.store.get().ignition !== 'on') return 'ignition-off';
+    if (this.store.get().ignition !== 'on') return this.feedback('ignition-off');
     const r = this.drivetrain.manualShift(direction);
-    return r === 'not-running' ? 'ignition-off' : r;
+    return this.feedback(r === 'not-running' ? 'ignition-off' : r);
+  }
+
+  /** Preferred gearbox. MANUAL needs PRO on a GPS drive (Demo can preview it). */
+  setTransmission(transmission: Transmission): ShiftOutcome {
+    this.store.set({ transmission });
+    this.persist();
+    this.applyDrive();
+    if (transmission === 'manual' && this.store.get().activeTransmission !== 'manual') return this.feedback('locked');
+    return this.feedback('switched');
+  }
+
+  /** M key / A-M button. */
+  toggleTransmission(): ShiftOutcome {
+    return this.setTransmission(this.store.get().activeTransmission === 'manual' ? 'auto' : 'manual');
+  }
+
+  /** Developer Mode: simulate a FREE or PRO user. */
+  setPlanOverride(planOverride: PlanOverride): void {
+    this.store.set({ planOverride });
+    this.saveDevOptions();
+    this.applyDrive();
   }
 
   /** Developer Mode: experimental scroll trap for steering wheels that only scroll the page. */
   setScrollTrap(scrollTrap: boolean): void {
     this.store.set({ scrollTrap });
-    this.storage.save(DEV_OPTIONS_SCHEMA, { scrollTrap });
+    this.saveDevOptions();
+  }
+
+  private saveDevOptions(): void {
+    const st = this.store.get();
+    this.storage.save(DEV_OPTIONS_SCHEMA, { scrollTrap: st.scrollTrap, plan: st.planOverride });
+  }
+
+  private feedback(outcome: ShiftOutcome): ShiftOutcome {
+    this.telemetry.lastShift = { outcome, at: typeof performance === 'undefined' ? Date.now() : performance.now() };
+    return outcome;
+  }
+
+  /**
+   * Recomputes entitlements, the running Drive Profile and gearbox from the user's choices and
+   * the current mode, and pushes them into the drivetrain and audio. Never touches the selected
+   * engine or the stored choices.
+   */
+  private applyDrive(): void {
+    const st = this.store.get();
+    const entitlements = resolveEntitlements(st.planOverride);
+    const activeDrive = effectiveDriveProfile(entitlements, st.shiftStyle, st.mode);
+    const activeTransmission: Transmission = st.transmission === 'manual' && canUseManual(entitlements, st.mode) ? 'manual' : 'auto';
+    const drive = getDriveProfile(activeDrive.id);
+    this.store.set({ entitlements, activeDrive, activeTransmission });
+    this.drivetrain.setDriveProfile(drive);
+    this.drivetrain.setProfile(this.geared(this.profile));
+    this.drivetrain.setTransmission(activeTransmission);
+    this.audio.setDriveTuning(drive);
+    this.audio.setProfile(this.geared(this.profile));
   }
 
   /** On-screen REV pedal held / released. */
@@ -379,8 +449,9 @@ export class EngineSession {
   }
 
   private geared(p: EngineProfile): EngineProfile {
-    const st = this.store.get();
-    return withShiftStyle(withGearing(p, st.gearing), st.shiftStyle);
+    const st = this.store?.get();
+    const id = st ? st.activeDrive.id : 'sport';
+    return applyDriveProfile(withGearing(p, st ? st.gearing : 'normal'), getDriveProfile(id));
   }
 
   // --- Internals -------------------------------------------------------------
@@ -398,6 +469,7 @@ export class EngineSession {
         : new GeolocationMotionSource();
     this.source = src;
     this.store.set({ mode, sourceStatus: { kind: 'starting' } });
+    this.applyDrive();
     src.start(
       (fix) => this.estimator.ingest(fix),
       (status) => {
@@ -458,7 +530,7 @@ export class EngineSession {
     this.storage.save(this.settingsSchema, {
       profileId: s.profileId, volume: s.volume, units: s.units,
       demoScenarioId: s.demoScenarioId, demoNoise: s.demoNoise, demoNoCoordsSpeed: s.demoNoCoordsSpeed, gearing: s.gearing,
-      shiftStyle: s.shiftStyle, theme: s.theme, language: s.language,
+      shiftStyle: s.shiftStyle, transmission: s.transmission, theme: s.theme, language: s.language,
     });
   }
 
@@ -479,7 +551,7 @@ export class EngineSession {
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
   profileId: DEFAULT_PROFILE_ID, volume: 0.8, units: 'kmh',
   demoScenarioId: DEMO_SCENARIOS[0]?.id ?? 'full-cycle', demoNoise: false, demoNoCoordsSpeed: false,
-  gearing: 'normal', shiftStyle: 'sport', theme: 'dark', language: null,
+  gearing: 'normal', shiftStyle: 'sport', transmission: 'auto', theme: 'dark', language: null,
 };
 
 function browserLanguage(): Language {

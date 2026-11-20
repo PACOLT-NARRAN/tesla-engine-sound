@@ -2,6 +2,7 @@ import type { DrivetrainEvent, DrivetrainState } from '../types/drivetrain.ts';
 import type { EngineProfile } from '../types/profile.ts';
 import { clamp, expApproach, lerp } from '../utils/math.ts';
 import { engineRpmInGear, selectGear } from './gearbox.ts';
+import { DRIVE_PROFILES, type DriveProfileConfig } from './driveProfiles.ts';
 import { estimateThrottle, isOverrun } from './throttle.ts';
 
 export interface DrivetrainInput {
@@ -18,6 +19,24 @@ export const MANUAL_HOLD_S = 15;
 export const MAX_MANUAL_OFFSET = 2;
 /** How fast the engine climbs while the REV pedal is held (rpm/s). */
 const REV_RISE_PER_S = 9000;
+/** Manual mode: a gear whose RPM would fall below idle × this is refused / left (anti-stall). */
+export const STALL_FACTOR = 0.85;
+/** Manual mode: a downshift whose RPM would pass limiter − this margin is refused (redline protection). */
+export const OVER_REV_MARGIN = 150;
+/** Below this speed (m/s) the car counts as standing for manual-mode neutral. */
+const STANDING_MS = 0.5;
+
+export type Transmission = 'auto' | 'manual';
+
+/** Result of a manual shift request. */
+export type ManualShiftResult =
+  | 'applied'
+  | 'not-running'
+  | 'no-gear' // automatic mode, car standing: no automatic gear to offset
+  | 'at-limit' // automatic mode: already ±2; manual mode: already in top gear / neutral
+  | 'out-of-range' // automatic mode: the override would leave the usable rev range
+  | 'over-rev' // manual mode: downshift would pass the rev limiter
+  | 'would-stall'; // manual mode: upshift would drop the engine below idle
 
 /**
  * Simulated combustion drivetrain: turns speed + acceleration into throttle, gear and RPM.
@@ -44,13 +63,17 @@ export class VirtualDrivetrain {
   private lastSpeed = 0;
   private revRpm = 0;
   private revReleaseOverrun = 0;
+  private drive: DriveProfileConfig;
+  /** Manual mode: the gear the driver chose (applied by the next update). */
+  private manualGear = 0;
 
-  constructor(profile: EngineProfile) {
+  constructor(profile: EngineProfile, drive: DriveProfileConfig = DRIVE_PROFILES.sport) {
     this.profile = profile;
+    this.drive = drive;
     this.s = {
       speed: 0, accel: 0, throttle: 0, load: 0, rpm: 0, targetRpm: 0, gear: 0,
       shifting: false, shiftDirection: null, shiftProgress: 0, overrun: false, limiter: false, running: false,
-      manualOffset: 0, revPedal: false,
+      manualOffset: 0, revPedal: false, transmission: 'auto',
     };
   }
 
@@ -61,6 +84,31 @@ export class VirtualDrivetrain {
   setProfile(profile: EngineProfile): void {
     this.profile = profile;
     this.s.gear = Math.min(this.s.gear, profile.gearbox.gearRatios.length);
+    this.manualGear = Math.min(this.manualGear, profile.gearbox.gearRatios.length);
+  }
+
+  /** Drive Profile tuning used by the drivetrain itself (pedal response, blip, lift-off hold). */
+  setDriveProfile(drive: DriveProfileConfig): void {
+    this.drive = drive;
+  }
+
+  get driveProfile(): DriveProfileConfig {
+    return this.drive;
+  }
+
+  /**
+   * Automatic ↔ manual. The engaged gear is kept, so switching never jumps the revs.
+   * Back to automatic, the gearbox continues from the current gear without a manual offset.
+   */
+  setTransmission(t: Transmission): void {
+    if (t === this.s.transmission) return;
+    this.s.transmission = t;
+    this.s.manualOffset = 0;
+    if (t === 'manual') this.manualGear = this.s.gear;
+    else {
+      this.autoGear = this.s.gear;
+      this.sinceAutoShift = 0;
+    }
   }
 
   /** Ignition: engine cranks and flares above idle before settling. */
@@ -74,15 +122,21 @@ export class VirtualDrivetrain {
     this.s.running = false;
     this.s.gear = 0;
     this.autoGear = 0;
+    this.manualGear = 0;
     this.s.manualOffset = 0;
     this.s.revPedal = false;
     this.s.throttle = 0;
     this.s.load = 0;
   }
 
-  /** Driver asks for one gear lower (-1) or higher (+1) than the automatic choice. */
-  manualShift(direction: -1 | 1): 'applied' | 'not-running' | 'no-gear' | 'at-limit' | 'out-of-range' {
+  /**
+   * Shift request. Automatic mode: one gear lower (-1) / higher (+1) than the automatic choice,
+   * at most ±2, back to automatic after MANUAL_HOLD_S. Manual mode: the next gear itself, with
+   * redline and anti-stall protection; neutral only while standing.
+   */
+  manualShift(direction: -1 | 1): ManualShiftResult {
     if (!this.s.running) return 'not-running';
+    if (this.s.transmission === 'manual') return this.manualModeShift(direction);
     if (this.autoGear === 0) return 'no-gear';
     const next = clamp(this.s.manualOffset + direction, -MAX_MANUAL_OFFSET, MAX_MANUAL_OFFSET);
     this.manualIdle = 0;
@@ -91,6 +145,36 @@ export class VirtualDrivetrain {
     // accepting and silently reverting on the next update.
     if (this.gearForOffset(next) === this.gearForOffset(this.s.manualOffset)) return 'out-of-range';
     this.s.manualOffset = next;
+    return 'applied';
+  }
+
+  /** Engine RPM the given gear would give at the current speed (0 for neutral). */
+  rpmInGear(gear: number): number {
+    return engineRpmInGear(this.lastSpeed, gear, this.profile.gearbox);
+  }
+
+  private manualModeShift(direction: -1 | 1): ManualShiftResult {
+    const p = this.profile;
+    const top = p.gearbox.gearRatios.length;
+    const from = this.manualGear;
+    const standing = this.lastSpeed < STANDING_MS;
+    if (direction === 1) {
+      if (from >= top) return 'at-limit';
+      const to = from + 1;
+      // Upshift from neutral to 1st, or while standing, is always fine (clutch).
+      if (from > 0 && !standing && this.rpmInGear(to) < p.idleRPM * STALL_FACTOR) return 'would-stall';
+      this.manualGear = to;
+      return 'applied';
+    }
+    if (from === 0) return 'at-limit';
+    if (from === 1) {
+      if (!standing) return 'at-limit'; // neutral only while standing
+      this.manualGear = 0;
+      return 'applied';
+    }
+    const to = from - 1;
+    if (this.rpmInGear(to) > p.limiterRPM - OVER_REV_MARGIN) return 'over-rev';
+    this.manualGear = to;
     return 'applied';
   }
 
@@ -126,7 +210,7 @@ export class VirtualDrivetrain {
 
     // 1) Virtual pedal.
     const rawThrottle = estimateThrottle(input.speed, input.accel, Math.max(1, s.gear), gb, p.dynamics);
-    const tau = rawThrottle > s.throttle ? 0.12 : 0.22;
+    const tau = (rawThrottle > s.throttle ? 0.12 : 0.22) / this.drive.throttleResponse;
     s.throttle = expApproach(s.throttle, rawThrottle, dt, tau);
     this.shiftThrottle = expApproach(this.shiftThrottle, s.throttle, dt, s.throttle > this.shiftThrottle ? 0.3 : 0.9);
     s.overrun = isOverrun(input.speed, input.accel);
@@ -144,17 +228,7 @@ export class VirtualDrivetrain {
     this.manualIdle += dt;
     this.lastSpeed = input.speed;
     if (!s.shifting && !s.revPedal) {
-      const auto = selectGear(
-        { currentGear: this.autoGear, speedMs: input.speed, throttle: this.shiftThrottle, sinceLastShift: this.sinceAutoShift, stationary: input.stationary, overrun: s.overrun },
-        gb, p.idleRPM, p.limiterRPM,
-      );
-      if (auto !== this.autoGear) {
-        this.autoGear = auto;
-        this.sinceAutoShift = 0;
-      }
-      if (auto === 0 || this.manualIdle > MANUAL_HOLD_S) s.manualOffset = 0;
-      const next = auto === 0 ? 0 : this.withinRevRange(clamp(auto + s.manualOffset, 1, gb.gearRatios.length), input.speed);
-      if (auto > 0) s.manualOffset = next - auto;
+      const next = s.transmission === 'manual' ? this.nextManualGear(input) : this.nextAutoGear(input);
       if (next !== s.gear) {
         const realShift = s.gear > 0 && next > 0;
         if (realShift) {
@@ -233,7 +307,7 @@ export class VirtualDrivetrain {
       } else {
         // Throttle blip for rev-matching.
         rpmTarget = lerp(this.shiftFromRpm, target, Math.min(1, ease * 1.3));
-        load = Math.max(load, 0.35 * Math.sin(t * Math.PI));
+        load = Math.max(load, this.drive.throttleBlipAmount * Math.sin(t * Math.PI));
       }
       if (t >= 1) {
         s.shifting = false;
@@ -253,6 +327,47 @@ export class VirtualDrivetrain {
     s.rpm = clamp(next, 0, p.limiterRPM + 150);
     s.load = clamp(load, 0, 1);
     return events;
+  }
+
+  private nextAutoGear(input: DrivetrainInput): number {
+    const s = this.s;
+    const gb = this.profile.gearbox;
+    const auto = selectGear(
+      {
+        currentGear: this.autoGear, speedMs: input.speed, throttle: this.shiftThrottle, sinceLastShift: this.sinceAutoShift,
+        stationary: input.stationary, overrun: s.overrun && this.drive.holdGearOnLift,
+      },
+      gb, this.profile.idleRPM, this.profile.limiterRPM,
+    );
+    if (auto !== this.autoGear) {
+      this.autoGear = auto;
+      this.sinceAutoShift = 0;
+    }
+    if (auto === 0 || this.manualIdle > MANUAL_HOLD_S) s.manualOffset = 0;
+    const next = auto === 0 ? 0 : this.withinRevRange(clamp(auto + s.manualOffset, 1, gb.gearRatios.length), input.speed);
+    if (auto > 0) s.manualOffset = next - auto;
+    return next;
+  }
+
+  /**
+   * Manual mode: the driver's gear, with two automatic recoveries that a real driver would do
+   * anyway: 1st when the car stops in a higher gear, and one gear down when the engine is about
+   * to stall. The engine is never over-revved by a downshift (requests are refused instead).
+   */
+  private nextManualGear(input: DrivetrainInput): number {
+    const p = this.profile;
+    const standing = input.stationary && input.speed < STANDING_MS;
+    let g = this.manualGear;
+    if (standing) {
+      if (g > 1) g = 1;
+    } else {
+      if (g === 0 && input.speed > 2) g = 1; // rolling away in neutral: engage 1st
+      if (g > 1 && this.sinceShift > 0.6 && engineRpmInGear(input.speed, g, p.gearbox) < p.idleRPM * STALL_FACTOR) g--;
+    }
+    this.manualGear = g;
+    this.autoGear = g; // so switching back to automatic continues from here
+    this.s.manualOffset = 0;
+    return g;
   }
 
   /** Nearest gear to `gear` that keeps the engine between just above idle and just below the limiter. */

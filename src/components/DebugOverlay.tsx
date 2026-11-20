@@ -27,7 +27,7 @@ export function DebugOverlay() {
       `accel          ${f(m.accel)} m/s²  (${f(m.accel / 9.81)} g)`,
       `throttle/load  ${f(d.throttle)} / ${f(d.load)}   overrun=${d.overrun} limiter=${d.limiter}`,
       `input          ${inputLine()}`,
-      `gear           ${d.gear === 0 ? 'N' : d.gear}  manual ${d.manualOffset > 0 ? '+' : ''}${d.manualOffset}   shifting=${d.shifting ? `${d.shiftDirection} ${f(d.shiftProgress)}` : 'no'}`,
+      `gear           ${d.gear === 0 ? 'N' : d.gear}  ${d.transmission} offset ${d.manualOffset > 0 ? '+' : ''}${d.manualOffset}  drive=${st.activeDrive.id}   shifting=${d.shifting ? `${d.shiftDirection} ${f(d.shiftProgress)}` : 'no'}`,
       `rpm            ${Math.round(d.rpm)}  target ${Math.round(d.targetRpm)}`,
       `audio ctx      ${a.contextState}  ${a.sampleRate} Hz  latency ${f(a.baseLatencyMs, 1)} ms  bank=${a.bankKind}`,
       `master gain    ${f(a.masterGain, 3)}`,

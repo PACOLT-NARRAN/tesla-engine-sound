@@ -25,9 +25,14 @@ export function directionToAction(delta: number): DriveAction | null {
   return null;
 }
 
-export function keyToAction(key: string): DriveAction | null {
+/** Arrow / Page keys and E (up), Q (down), M (automatic ↔ manual); letters in any case or layout position. */
+export function keyToAction(key: string, code = ''): DriveAction | null {
   if (key === 'ArrowDown' || key === 'PageDown') return 'shift-down';
   if (key === 'ArrowUp' || key === 'PageUp') return 'shift-up';
+  const k = key.length === 1 ? key.toLowerCase() : '';
+  if (k === 'e' || code === 'KeyE') return 'shift-up';
+  if (k === 'q' || code === 'KeyQ') return 'shift-down';
+  if (k === 'm' || code === 'KeyM') return 'toggle-transmission';
   return null;
 }
 

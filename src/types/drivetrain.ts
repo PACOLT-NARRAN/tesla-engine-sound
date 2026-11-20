@@ -23,6 +23,8 @@ export interface DrivetrainState {
   manualOffset: number;
   /** On-screen REV pedal is held (clutch in, throttle open). */
   revPedal: boolean;
+  /** Automatic gearbox (with temporary override) or full manual shifting. */
+  transmission: 'auto' | 'manual';
 }
 
 export type DrivetrainEvent =

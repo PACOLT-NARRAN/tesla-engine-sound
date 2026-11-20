@@ -3,6 +3,7 @@ import type { ResetScope } from '../core/EngineSession.ts';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import type { MessageKey } from '../i18n/index.ts';
 import { useT } from '../i18n/useT.ts';
+import { DriveSettings } from './DriveSettings.tsx';
 import { Sheet } from './Sheet.tsx';
 
 /** Segmented control with one button per option. */
@@ -54,19 +55,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           />
         </div>
         <p className="setting-hint">{t('settings.gearingHint')}</p>
-        <div className="setting-row setting-row-hint">
-          <span>{t('settings.shiftStyle')}</span>
-          <Segmented
-            value={s.shiftStyle}
-            onPick={(v) => session.setShiftStyle(v)}
-            options={[
-              { id: 'comfort', label: t('settings.shiftStyle.comfort') },
-              { id: 'sport', label: t('settings.shiftStyle.sport') },
-              { id: 'track', label: t('settings.shiftStyle.track') },
-            ]}
-          />
-        </div>
-        <p className="setting-hint">{t('settings.shiftStyleHint')}</p>
+        <DriveSettings />
         <div className="setting-row">
           <span>{t('settings.theme')}</span>
           <Segmented

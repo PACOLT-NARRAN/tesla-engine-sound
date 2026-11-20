@@ -54,6 +54,16 @@ export interface EngineAudioConfig {
   blowoff?: number;
   /** Synthesised turbo whistle that spools with load and RPM, 0..1. Default 0.5 for turbo engines, 0 otherwise. */
   turbo?: number;
+  /** Belt-driven supercharger whine, 0..1. Default 0 (built-in banks already contain it). */
+  supercharger?: number;
+  /** Multiplier on the off-throttle (overrun / engine braking) layer. Default 1. */
+  offLoad?: number;
+  /**
+   * RPM range the sound bank was recorded for, when it differs from this profile (Sound Studio
+   * engines that reuse another engine's bank). The engine's own idle..limiter is mapped onto it,
+   * so the recording is never pitched far outside the range it was made for.
+   */
+  bankRpm?: { idle: number; limiter: number };
   /** Tone colour of the placeholder synthesiser (TODO: remove once all banks are converted). */
   placeholderTone: { brightness: number; roughness: number };
 }

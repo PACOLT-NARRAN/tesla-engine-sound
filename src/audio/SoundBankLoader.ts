@@ -27,18 +27,20 @@ export class SoundBankLoader {
   }
 
   load(profile: EngineProfile): Promise<SoundBank> {
-    let p = this.cache.get(profile.id);
+    const key = bankCacheKey(profile);
+    let p = this.cache.get(key);
     if (!p) {
       p = (profile.audio.converted ? this.loadConverted(profile) : Promise.resolve(buildPlaceholderBank(profile)));
-      p.catch(() => this.cache.delete(profile.id));
-      this.cache.set(profile.id, p);
+      p.catch(() => this.cache.delete(key));
+      this.cache.set(key, p);
     }
     return p;
   }
 
-  /** Drop banks other than `keepId` to bound memory on the car's browser. */
-  evictExcept(keepId: string): void {
-    for (const id of this.cache.keys()) if (id !== keepId) this.cache.delete(id);
+  /** Drop banks other than the one `keep` uses, to bound memory on the car's browser. */
+  evictExcept(keep: EngineProfile): void {
+    const keepKey = bankCacheKey(keep);
+    for (const key of this.cache.keys()) if (key !== keepKey) this.cache.delete(key);
   }
 
   private async loadConverted(profile: EngineProfile): Promise<SoundBank> {
@@ -94,6 +96,17 @@ export class SoundBankLoader {
     if (!this.decodeCtx) this.decodeCtx = new OfflineAudioContext(1, 1, 44100);
     return this.decodeCtx;
   }
+}
+
+/**
+ * Cache key of the bank a profile plays. A recorded bank is shared by every engine using the
+ * same manifest (Sound Studio engines reuse built-in banks); a synthesised bank depends on the
+ * profile's own parameters, so an edited engine gets a fresh one.
+ */
+export function bankCacheKey(p: EngineProfile): string {
+  if (p.audio.converted) return `bank:${p.audio.manifest}`;
+  const t = p.audio.placeholderTone;
+  return `synth:${p.id}:${p.cylinders}:${p.aspiration}:${p.idleRPM}:${p.limiterRPM}:${t.brightness}:${t.roughness}`;
 }
 
 function toBuffer(data: Float32Array, sampleRate: number): AudioBuffer {

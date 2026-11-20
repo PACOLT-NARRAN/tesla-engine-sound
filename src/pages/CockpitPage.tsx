@@ -18,7 +18,6 @@ import { isDebugEnabled } from '../hooks/useDebugFlag.ts';
 import { useManualShift } from '../hooks/useManualShift.ts';
 import { useT } from '../i18n/useT.ts';
 import { engineSubtitle, engineTitle } from '../profiles/presentation.ts';
-import { getProfile } from '../profiles/registry.ts';
 
 const debug = isDebugEnabled();
 
@@ -26,7 +25,7 @@ export function CockpitPage() {
   const session = useSession();
   const s = useSessionState();
   const [panel, setPanel] = useState<Panel>(null);
-  const profile = getProfile(s.profileId) ?? session.currentProfile;
+  const profile = session.findProfile(s.profileId) ?? session.currentProfile;
   const close = () => setPanel(null);
   const t = useT();
   const name = engineTitle(profile);

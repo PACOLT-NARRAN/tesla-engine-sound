@@ -91,3 +91,10 @@ the Drive screen, so the engine, audio and GPS keep running while you browse.
   sequence through the normal drivetrain and audio pipeline with the car standing still. It runs
   only while the ignition is off. Starting the engine or selecting another engine stops it.
 - The old `EngineSelector` sheet was removed.
+
+## Sound Studio (Phase 5)
+
+Custom engines live in `src/studio/` and are documented in [STUDIO.md](STUDIO.md).
+
+- The session joins built-in and custom engines through `findProfile()` / `allProfiles()`.
+- Nothing else in the drivetrain or the audio pipeline knows that an engine is custom.

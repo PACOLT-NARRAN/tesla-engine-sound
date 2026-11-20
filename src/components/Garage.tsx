@@ -8,9 +8,11 @@ import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
 import { getCatalogEntry } from '../profiles/catalog.ts';
 import { engineDescription, engineInduction, engineLayout, engineSubtitle } from '../profiles/presentation.ts';
-import { ENGINE_PROFILES } from '../profiles/registry.ts';
+import { canCreateCustomProfile } from '../entitlements/entitlements.ts';
+import { defaultSpec, specFromProfile, type CustomEngineSpec } from '../studio/customEngine.ts';
 import { EngineDetail } from './EngineDetail.tsx';
-import { FavoriteButton, PreviewButton, TierBadge } from './GarageParts.tsx';
+import { FavoriteButton, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
+import { SoundStudio } from './SoundStudio.tsx';
 
 /** Filter chips, grouped with a small gap between groups. */
 const FILTER_GROUPS: readonly (readonly GarageFilter[])[] = [
@@ -32,9 +34,10 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<GarageSort>('recommended');
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [studio, setStudio] = useState<{ spec: CustomEngineSpec; isNew: boolean } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const items = useMemo(() => buildItems(ENGINE_PROFILES, getCatalogEntry), []);
+  const items = useMemo(() => buildItems(session.allProfiles(), getCatalogEntry), [session, s.customEngines]);
   const texts = useMemo(() => new Map(items.map((i) => [i, searchText(i, searchLabels(i))])), [items]);
   const ctx = { favorites: s.favorites, recent: s.recentEngines };
   const list = queryGarage(items, { filter, query, sort }, ctx, (i) => texts.get(i) ?? '', s.locale);
@@ -47,13 +50,24 @@ export function Garage({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || detailId !== null) return;
+      if (e.key !== 'Escape' || detailId !== null || studio !== null) return;
       if (query) setQuery('');
       else onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [detailId, query, onClose]);
+  }, [detailId, query, onClose, studio]);
+
+  const openStudio = (spec: CustomEngineSpec | null, isNew: boolean) => {
+    session.stopPreview();
+    setDetailId(null);
+    setStudio({ spec: spec ?? defaultSpec(), isNew });
+  };
+  const editEngine = (id: string) => {
+    const spec = s.customEngines.find((c) => c.id === id);
+    if (spec) openStudio(spec, false);
+  };
+  const useAsBase = (item: GarageItem) => openStudio(specFromProfile(item.profile, t('studio.baseName', { name: item.title })), true);
 
   const resetFilters = () => {
     setFilter('all');
@@ -77,6 +91,9 @@ export function Garage({ onClose }: { onClose: () => void }) {
         <button className="btn garage-back" onClick={onClose} aria-label={t('garage.backAria')}>← {t('garage.back')}</button>
         <h2>{t('garage.title')}</h2>
         <span className="garage-count" aria-live="polite">{t('garage.count', { count: list.length })}</span>
+        <button className="btn btn-studio" onClick={() => openStudio(null, true)} data-action="new-engine">
+          + {t('studio.open')}{!canCreateCustomProfile(s.entitlements) && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
+        </button>
       </header>
 
       <div className="garage-tools">
@@ -127,11 +144,14 @@ export function Garage({ onClose }: { onClose: () => void }) {
         {list.length === 0 ? (
           <div className="garage-empty">
             <p>{emptyText()}</p>
+            {filter === 'custom' && !query && <button className="btn btn-primary" onClick={() => openStudio(null, true)}>+ {t('studio.create')}</button>}
             {(filter !== 'all' || query) && <button className="btn" onClick={resetFilters}>{t('garage.emptyReset')}</button>}
           </div>
         ) : (
           <div className="garage-grid">
-            {list.map((item) => <GarageCard key={item.profile.id} item={item} onDetails={() => setDetailId(item.profile.id)} />)}
+            {list.map((item) => (
+              <GarageCard key={item.profile.id} item={item} onDetails={() => setDetailId(item.profile.id)} onEdit={() => editEngine(item.profile.id)} />
+            ))}
           </div>
         )}
       </div>
@@ -145,25 +165,41 @@ export function Garage({ onClose }: { onClose: () => void }) {
             setDetailId(null);
             onClose();
           }}
+          onEdit={() => editEngine(detail.profile.id)}
+          onUseAsBase={() => useAsBase(detail)}
+        />
+      )}
+
+      {studio && (
+        <SoundStudio
+          key={studio.spec.id}
+          initial={studio.spec}
+          isNew={studio.isNew}
+          onClose={() => setStudio(null)}
+          onSaved={(id) => {
+            setStudio(null);
+            setDetailId(id);
+          }}
         />
       )}
     </div>
   );
 }
 
-function GarageCard({ item, onDetails }: { item: GarageItem; onDetails: () => void }) {
+function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: () => void; onEdit: () => void }) {
   const session = useSession();
   const s = useSessionState();
   const t = useT();
   const p = item.profile;
   const selected = p.id === s.profileId;
   const name = item.title;
+  const allowed = session.canSelect(p.id);
   return (
-    <article className={`g-card ${selected ? 'selected' : ''}`} data-engine-id={p.id}>
+    <article className={`g-card ${selected ? 'selected' : ''}`} data-engine-id={p.id} data-custom={item.custom}>
       <div className="g-card-top">
         <TierBadge item={item} />
         <span className="badge">{engineLayout(p, t)}</span>
-        {!p.audio.converted && <span className="badge badge-synth">{t('engines.synthPreview')}</span>}
+        <SoundBadge item={item} />
         <FavoriteButton id={p.id} name={name} />
       </div>
       <button className="g-card-main" onClick={onDetails} aria-label={t('garage.detailsAria', { name })}>
@@ -179,13 +215,16 @@ function GarageCard({ item, onDetails }: { item: GarageItem; onDetails: () => vo
       </dl>
       <div className="g-card-actions">
         <PreviewButton id={p.id} name={name} />
+        {item.custom && <button className="btn" onClick={onEdit} aria-label={t('studio.editAria', { name })} data-action="edit">{t('studio.edit')}</button>}
         <button
           className={`btn ${selected ? 'btn-selected' : 'btn-primary'}`}
           onClick={() => void session.selectProfile(p.id)}
           aria-pressed={selected}
           aria-label={t('garage.selectAria', { name })}
+          disabled={!allowed && !selected}
         >
           {selected ? `✓ ${t('garage.selected')}` : t('garage.select')}
+          {!allowed && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
         </button>
       </div>
     </article>

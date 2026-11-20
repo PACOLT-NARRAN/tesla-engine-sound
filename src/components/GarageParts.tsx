@@ -7,6 +7,7 @@ import { getPack } from '../profiles/packs.ts';
 export function TierBadge({ item }: { item: GarageItem }) {
   const t = useT();
   const pack = getPack(item.packId);
+  if (item.custom) return <span className="tier-badge tier-custom">{t('garage.tier.custom')}</span>;
   const label = item.tier === 'pack' && pack ? pack.name[t.lang] : t(`garage.tier.${item.tier}`);
   return <span className={`tier-badge tier-${item.tier}`}>{label}</span>;
 }
@@ -45,4 +46,13 @@ export function PreviewButton({ id, name }: { id: string; name: string }) {
       {label}
     </button>
   );
+}
+
+/** Sound source line of an engine: recorded bank, borrowed bank (Sound Studio) or synthesiser. */
+export function SoundBadge({ item }: { item: GarageItem }) {
+  const t = useT();
+  const p = item.profile;
+  if (!p.audio.converted) return <span className="badge badge-synth">{t('engines.synthPreview')}</span>;
+  if (item.custom) return <span className="badge badge-real">{t('garage.soundBorrowed')}</span>;
+  return null;
 }

@@ -26,7 +26,7 @@ export interface GarageItem {
   title: string;
   tier: EngineTier;
   packId: string | null;
-  /** Built-in engines are not custom; Sound Studio engines will be. */
+  /** Sound Studio engine (id 'custom-…'). */
   custom: boolean;
 }
 
@@ -47,7 +47,7 @@ export const isNaturallyAspirated = (p: EngineProfile) => p.aspiration === 'natu
 export function buildItems(profiles: readonly EngineProfile[], catalog: (id: string) => EngineCatalogEntry | undefined): GarageItem[] {
   return profiles.map((profile) => {
     const meta = catalog(profile.id);
-    return { profile, meta, title: meta?.displayName ?? profile.name, tier: meta?.tier ?? 'free', packId: meta?.packId ?? null, custom: false };
+    return { profile, meta, title: meta?.displayName ?? profile.name, tier: meta?.tier ?? 'free', packId: meta?.packId ?? null, custom: profile.id.startsWith('custom-') };
   });
 }
 
@@ -111,7 +111,8 @@ export function sortItems(items: readonly GarageItem[], sort: GarageSort, lang: 
   const list = [...items];
   const byName = (a: GarageItem, b: GarageItem) => a.title.localeCompare(b.title, lang);
   switch (sort) {
-    case 'recommended': return list;
+    // Built-in engines in catalog order, then the user's own engines.
+    case 'recommended': return list.sort((a, b) => Number(a.custom) - Number(b.custom));
     case 'name': return list.sort(byName);
     case 'rpm': return list.sort((a, b) => b.profile.redlineRPM - a.profile.redlineRPM || byName(a, b));
     case 'displacement': return list.sort((a, b) => (b.profile.displacementL ?? 0) - (a.profile.displacementL ?? 0) || byName(a, b));

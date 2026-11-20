@@ -1,4 +1,16 @@
+import type { EngineProfile } from '../types/profile.ts';
 import { clamp, lerp } from '../utils/math.ts';
+
+/**
+ * RPM used to pick and pitch the sound bank's loops. Equal to the engine RPM, except for an
+ * engine that borrows a bank recorded for a different rev range (Sound Studio): its
+ * idle..limiter is mapped linearly onto the bank's idle..limiter.
+ */
+export function soundRpm(rpm: number, p: Pick<EngineProfile, 'idleRPM' | 'limiterRPM'> & { audio: Pick<EngineProfile['audio'], 'bankRpm'> }): number {
+  const b = p.audio.bankRpm;
+  if (!b || p.limiterRPM <= p.idleRPM || b.limiter <= b.idle) return rpm;
+  return b.idle + ((rpm - p.idleRPM) * (b.limiter - b.idle)) / (p.limiterRPM - p.idleRPM);
+}
 
 /**
  * Equal-power crossfade weights across RPM bands. Only the two bands bracketing

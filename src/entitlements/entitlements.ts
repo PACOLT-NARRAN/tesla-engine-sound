@@ -10,7 +10,9 @@ export type Plan = 'free' | 'pro';
 export type Capability =
   | 'manual-shifting'
   | 'drive-profile.sport'
-  | 'drive-profile.track';
+  | 'drive-profile.track'
+  | 'custom-profiles'
+  | 'custom-gearing';
 
 /** Single place for commercial configuration. */
 export const PRODUCT = {
@@ -21,7 +23,7 @@ export const PRODUCT = {
 
 export const PLAN_CAPABILITIES: Readonly<Record<Plan, readonly Capability[]>> = {
   free: [],
-  pro: ['manual-shifting', 'drive-profile.sport', 'drive-profile.track'],
+  pro: ['manual-shifting', 'drive-profile.sport', 'drive-profile.track', 'custom-profiles', 'custom-gearing'],
 };
 
 /** Capability needed for each Drive Profile; COMFORT is always free. */
@@ -70,4 +72,22 @@ export function effectiveDriveProfile(e: Entitlements, selected: DriveProfileId,
 /** Manual shifting follows the same rule: allowed with the capability, or as a Demo preview. */
 export function canUseManual(e: Entitlements, mode: 'gps' | 'demo'): boolean {
   return hasCapability(e, 'manual-shifting') || mode === 'demo';
+}
+
+/** Sound Studio: saving (creating / editing) custom engines. Everyone may open the editor and preview. */
+export function canCreateCustomProfile(e: Entitlements): boolean {
+  return hasCapability(e, 'custom-profiles');
+}
+
+/** Sound Studio: entering own gear ratios (generated ratios are always available). */
+export function canUseCustomGearing(e: Entitlements): boolean {
+  return hasCapability(e, 'custom-gearing');
+}
+
+/**
+ * May this engine be selected and driven? Built-in engines: yes (all are FREE today).
+ * Custom engines need the Sound Studio capability; they are never deleted when it is missing.
+ */
+export function canUseEngine(e: Entitlements, engine: { custom: boolean }): boolean {
+  return !engine.custom || hasCapability(e, 'custom-profiles');
 }

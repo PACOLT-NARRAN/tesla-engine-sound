@@ -2,7 +2,7 @@ import type { DrivetrainEvent, DrivetrainState } from '../types/drivetrain.ts';
 import type { DriveProfileConfig } from '../drivetrain/driveProfiles.ts';
 import type { EngineProfile } from '../types/profile.ts';
 import { clamp } from '../utils/math.ts';
-import { bandPlaybackRate, bandWeights, engineLevel, loadGains, toneCutoffHz } from './layerMix.ts';
+import { bandPlaybackRate, bandWeights, engineLevel, loadGains, soundRpm, toneCutoffHz } from './layerMix.ts';
 import type { LoopSample, SoundBank } from './types.ts';
 
 /** Time constants (seconds) for setTargetAtTime: short enough to feel instant, long enough to never click. */
@@ -68,6 +68,10 @@ export class EngineAudioEngine {
   private turboOsc2!: OscillatorNode;
   private turboNoise!: BiquadFilterNode;
   private boost = 0;
+  private scGain!: GainNode;
+  private scOsc!: OscillatorNode;
+  private scFilter!: BiquadFilterNode;
+  private scOn = false;
   private lastUpdateAt = 0;
   private stateListener: ((s: AudioContextState) => void) | null = null;
   /** Drive Profile: multiplier on parameter smoothing, and off-throttle (engine braking) level. */
@@ -153,6 +157,8 @@ export class EngineAudioEngine {
     if (!this.ctx || !this.voice) return;
     this.boost = 0;
     this.turboGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    this.scGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    this.scOn = false;
     this.retireVoice(this.voice, 0.12);
     this.voice = null;
   }
@@ -166,8 +172,9 @@ export class EngineAudioEngine {
     const now = ctx.currentTime;
     const k = this.smoothing;
 
-    // RPM bands: crossfade + pitch.
-    bandWeights(s.rpm, v.bandRpms, this.weights);
+    // RPM bands: crossfade + pitch (in the bank's own RPM scale).
+    const bankRpm = soundRpm(s.rpm, p);
+    bandWeights(bankRpm, v.bandRpms, this.weights);
     for (let i = 0; i < v.layers.length; i++) {
       const layer = v.layers[i] as Layer;
       const w = this.weights[i] ?? 0;
@@ -178,7 +185,7 @@ export class EngineAudioEngine {
       }
       // Only retune audible layers (and those about to become audible).
       if (w > 0 || layer.lastRate === 0) {
-        const rate = bandPlaybackRate(s.rpm, layer.rpm, p.audio.pitch);
+        const rate = bandPlaybackRate(bankRpm, layer.rpm, p.audio.pitch);
         if (Math.abs(rate - layer.lastRate) > 0.0005) {
           layer.onSrc.playbackRate.setTargetAtTime(rate, now, TC_RATE * k);
           layer.offSrc.playbackRate.setTargetAtTime(rate, now, TC_RATE * k);
@@ -190,7 +197,7 @@ export class EngineAudioEngine {
     // Load: on-throttle vs. overrun layers, tone, level.
     const lg = loadGains(s.load, s.overrun);
     v.onBus.gain.setTargetAtTime(lg.on, now, TC_GAIN * 1.5 * k);
-    v.offBus.gain.setTargetAtTime(lg.off * this.offLevel, now, TC_GAIN * 1.5 * k);
+    v.offBus.gain.setTargetAtTime(lg.off * this.offLevel * clamp(p.audio.offLoad ?? 1, 0, 2), now, TC_GAIN * 1.5 * k);
     this.tone.frequency.setTargetAtTime(toneCutoffHz(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun), now, TC_TONE * k);
     const level = s.running ? engineLevel(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun) * p.audio.volume : 0;
     if (Math.abs(level - this.lastLevel) > 0.003) {
@@ -199,6 +206,7 @@ export class EngineAudioEngine {
     }
 
     this.updateTurbo(s, p, now);
+    this.updateSupercharger(s, p, now);
 
     // Rev limiter: fuel cut flutter.
     if (s.limiter) {
@@ -278,6 +286,13 @@ export class EngineAudioEngine {
     this.turboOsc.start();
     this.turboOsc2.start();
     noise.start();
+
+    // Supercharger whine (Sound Studio engines): a belt-driven tone locked to engine RPM.
+    this.scGain = new GainNode(ctx, { gain: 0 });
+    this.scOsc = new OscillatorNode(ctx, { type: 'sawtooth', frequency: 800 });
+    this.scFilter = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 800, Q: 4 });
+    this.scOsc.connect(this.scFilter).connect(this.scGain).connect(this.master);
+    this.scOsc.start();
     this.master.connect(comp).connect(ctx.destination);
   }
 
@@ -341,6 +356,22 @@ export class EngineAudioEngine {
     this.turboOsc2.frequency.setTargetAtTime(f * 1.51, now, 0.05);
     this.turboNoise.frequency.setTargetAtTime(f, now, 0.05);
     this.turboGain.gain.setTargetAtTime(amount * 0.07 * b * this.volume, now, 0.05);
+  }
+
+  /** Supercharger whine: pitch follows RPM directly (no spool lag), louder under load. */
+  private updateSupercharger(s: DrivetrainState, p: EngineProfile, now: number): void {
+    const amount = clamp(p.audio.supercharger ?? 0, 0, 1);
+    if (amount <= 0 || !s.running) {
+      if (this.scOn) this.scGain.gain.setTargetAtTime(0, now, 0.06);
+      this.scOn = false;
+      return;
+    }
+    this.scOn = true;
+    const f = superchargerHz(s.rpm);
+    this.scOsc.frequency.setTargetAtTime(f, now, 0.03);
+    this.scFilter.frequency.setTargetAtTime(f, now, 0.03);
+    const loadK = s.overrun ? 0.25 : 0.35 + 0.65 * clamp(s.load, 0, 1);
+    this.scGain.gain.setTargetAtTime(amount * 0.045 * loadK * this.volume, now, 0.06);
   }
 
   private onShift(direction: 'up' | 'down', throttle: number, p: EngineProfile): void {
@@ -408,4 +439,9 @@ export class EngineAudioEngine {
 export function turboAmount(p: EngineProfile): number {
   if (typeof p.audio.turbo === 'number') return clamp(p.audio.turbo, 0, 1);
   return ['turbo', 'twin-turbo', 'twin-charged'].includes(p.aspiration) ? 0.5 : 0;
+}
+
+/** Supercharger whine frequency: belt-driven, so it rises in proportion to engine RPM. */
+export function superchargerHz(rpm: number): number {
+  return 400 + Math.max(0, rpm) * 0.55;
 }

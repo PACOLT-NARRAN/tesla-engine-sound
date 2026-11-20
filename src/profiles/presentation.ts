@@ -20,7 +20,7 @@ export function engineSubtitle(p: EngineProfile, t: Translator): string {
 }
 
 export function engineDescription(p: EngineProfile, t: Translator): string {
-  return getCatalogEntry(p.id)?.shortDescription[t.lang] ?? p.description;
+  return getCatalogEntry(p.id)?.shortDescription[t.lang] ?? (p.description || (p.id.startsWith('custom-') ? t('studio.cardFallback') : ''));
 }
 
 export function engineLayout(p: EngineProfile, t: Translator): string {

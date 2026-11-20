@@ -165,3 +165,66 @@ test('gearing modes shorten the final drive so full revs come at lower road spee
   assert.ok(Math.abs(fun.gearbox.finalDrive / p.gearbox.finalDrive - GEARING_FACTOR.fun) < 1e-9);
   assert.equal(p.gearbox.finalDrive, fd);
 });
+
+test('scroll shifting: down drops a gear (max two), up returns, auto resumes after the hold time', async () => {
+  const { MANUAL_HOLD_S } = await import('../src/drivetrain/VirtualDrivetrain.ts');
+  const dt = new VirtualDrivetrain(testProfile());
+  dt.ignite();
+  const cruise = (n: number) => { for (let i = 0; i < n; i++) dt.update(0.02, { speed: kmh(70), accel: 0, stationary: false }); };
+  for (let i = 0; i < 400; i++) dt.update(0.02, { speed: kmh(Math.min(70, i * 0.5)), accel: 1, stationary: false });
+  cruise(300);
+  const auto = dt.state.gear;
+  assert.ok(auto >= 3, `auto gear ${auto}`);
+  const rpmAuto = dt.state.rpm;
+  dt.manualShift(-1); cruise(60);
+  assert.equal(dt.state.gear, auto - 1);
+  dt.manualShift(-1); cruise(60);
+  dt.manualShift(-1); cruise(60);
+  assert.equal(dt.state.gear, auto - 2, 'never more than two below automatic');
+  assert.ok(dt.state.rpm > rpmAuto * 1.4, 'revs rise after downshifts');
+  dt.manualShift(1); cruise(60);
+  assert.equal(dt.state.gear, auto - 1);
+  cruise(Math.ceil((MANUAL_HOLD_S + 2) / 0.02));
+  assert.equal(dt.state.gear, auto, 'back to automatic');
+  assert.equal(dt.state.manualOffset, 0);
+});
+
+test('manual downshift never over-revs the engine', () => {
+  const p = testProfile();
+  const dt = new VirtualDrivetrain(p);
+  dt.ignite();
+  for (let i = 0; i < 1500; i++) dt.update(0.02, { speed: kmh(Math.min(170, i * 0.4)), accel: 2, stationary: false });
+  dt.manualShift(-1); dt.manualShift(-1);
+  for (let i = 0; i < 100; i++) dt.update(0.02, { speed: kmh(170), accel: 0, stationary: false });
+  assert.ok(dt.state.rpm <= p.limiterRPM + 150);
+  assert.ok(dt.state.manualOffset > -2, 'refused a downshift that would pass the limiter');
+});
+
+test('REV pedal free-revs when stationary and crackles on release', () => {
+  const p = testProfile();
+  const dt = new VirtualDrivetrain(p);
+  dt.ignite();
+  for (let i = 0; i < 100; i++) dt.update(0.02, { speed: 0, accel: 0, stationary: true });
+  dt.setRevPedal(true);
+  let maxRpm = 0;
+  for (let i = 0; i < 60; i++) { dt.update(0.02, { speed: 0, accel: 0, stationary: true }); maxRpm = Math.max(maxRpm, dt.state.rpm); }
+  assert.ok(maxRpm > p.redlineRPM * 0.8, `revved to ${maxRpm}`);
+  assert.equal(dt.state.load, 1);
+  assert.equal(dt.state.gear, 0);
+  dt.setRevPedal(false);
+  const ev = dt.update(0.02, { speed: 0, accel: 0, stationary: true });
+  assert.ok(ev.some((e) => e.type === 'overrun-start'));
+  for (let i = 0; i < 150; i++) dt.update(0.02, { speed: 0, accel: 0, stationary: true });
+  assert.ok(dt.state.rpm < p.idleRPM * 1.3, 'falls back to idle');
+});
+
+test('shift styles raise the relaxed shift points; comfort leaves the profile untouched', async () => {
+  const { withShiftStyle } = await import('../src/core/settings.ts');
+  const p = testProfile();
+  assert.equal(withShiftStyle(p, 'comfort'), p);
+  const sport = withShiftStyle(p, 'sport');
+  const track = withShiftStyle(p, 'track');
+  assert.ok(sport.gearbox.shiftUpRPM.gentle > p.gearbox.shiftUpRPM.gentle);
+  assert.ok(track.gearbox.shiftUpRPM.gentle > sport.gearbox.shiftUpRPM.gentle);
+  assert.equal(track.gearbox.shiftUpRPM.hard, p.gearbox.shiftUpRPM.hard);
+});

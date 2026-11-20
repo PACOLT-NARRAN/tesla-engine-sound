@@ -13,6 +13,11 @@ export interface DrivetrainInput {
 const START_DURATION_S = 1.1;
 const MAX_RPM_RISE_PER_S = 14000;
 const MAX_RPM_FALL_PER_S = 9000;
+/** Manual gear choice returns to automatic after this long without another scroll. */
+export const MANUAL_HOLD_S = 15;
+export const MAX_MANUAL_OFFSET = 2;
+/** How fast the engine climbs while the REV pedal is held (rpm/s). */
+const REV_RISE_PER_S = 9000;
 
 /**
  * Simulated combustion drivetrain: turns speed + acceleration into throttle, gear and RPM.
@@ -31,12 +36,19 @@ export class VirtualDrivetrain {
   private limiterPhase = 0;
   /** Slower-moving throttle used for shift decisions, so brief pedal changes don't trigger shifts. */
   private shiftThrottle = 0;
+  /** Gear the automatic gearbox would pick; the engaged gear is this plus the manual offset. */
+  private autoGear = 0;
+  private sinceAutoShift = 10;
+  private manualIdle = 0;
+  private revRpm = 0;
+  private revReleaseOverrun = 0;
 
   constructor(profile: EngineProfile) {
     this.profile = profile;
     this.s = {
       speed: 0, accel: 0, throttle: 0, load: 0, rpm: 0, targetRpm: 0, gear: 0,
       shifting: false, shiftDirection: null, shiftProgress: 0, overrun: false, limiter: false, running: false,
+      manualOffset: 0, revPedal: false,
     };
   }
 
@@ -59,8 +71,28 @@ export class VirtualDrivetrain {
   shutdown(): void {
     this.s.running = false;
     this.s.gear = 0;
+    this.autoGear = 0;
+    this.s.manualOffset = 0;
+    this.s.revPedal = false;
     this.s.throttle = 0;
     this.s.load = 0;
+  }
+
+  /** Driver asks for one gear lower (-1) or higher (+1) than the automatic choice. */
+  manualShift(direction: -1 | 1): void {
+    if (!this.s.running || this.autoGear === 0) return;
+    this.s.manualOffset = clamp(this.s.manualOffset + direction, -MAX_MANUAL_OFFSET, MAX_MANUAL_OFFSET);
+    this.manualIdle = 0;
+  }
+
+  /** REV pedal: while held the clutch is in and the engine revs freely toward the limiter. */
+  setRevPedal(down: boolean): void {
+    if (!down && this.s.revPedal) {
+      // Snap-closed throttle from high revs: let the exhaust crackle as the revs fall.
+      this.revReleaseOverrun = this.s.rpm > this.s.targetRpm + 800 || this.s.rpm > this.profile.idleRPM * 2.5 ? 0.9 : 0;
+    }
+    this.s.revPedal = down && this.s.running;
+    if (this.s.revPedal) this.revRpm = Math.max(this.revRpm, this.s.rpm);
   }
 
   update(dt: number, input: DrivetrainInput): DrivetrainEvent[] {
@@ -84,16 +116,30 @@ export class VirtualDrivetrain {
     s.throttle = expApproach(s.throttle, rawThrottle, dt, tau);
     this.shiftThrottle = expApproach(this.shiftThrottle, s.throttle, dt, s.throttle > this.shiftThrottle ? 0.3 : 0.9);
     s.overrun = isOverrun(input.speed, input.accel);
+    if (this.revReleaseOverrun > 0) {
+      this.revReleaseOverrun -= dt;
+      s.overrun = true;
+    }
+    if (s.revPedal) s.overrun = false;
     if (s.overrun && !this.wasOverrun) events.push({ type: 'overrun-start', rpm: s.rpm });
     this.wasOverrun = s.overrun;
 
-    // 2) Gear selection (blocked while a shift is in progress).
+    // 2) Gear selection (blocked while a shift is in progress or the clutch is in).
     this.sinceShift += dt;
-    if (!s.shifting) {
-      const next = selectGear(
-        { currentGear: s.gear, speedMs: input.speed, throttle: this.shiftThrottle, sinceLastShift: this.sinceShift, stationary: input.stationary, overrun: s.overrun },
+    this.sinceAutoShift += dt;
+    this.manualIdle += dt;
+    if (!s.shifting && !s.revPedal) {
+      const auto = selectGear(
+        { currentGear: this.autoGear, speedMs: input.speed, throttle: this.shiftThrottle, sinceLastShift: this.sinceAutoShift, stationary: input.stationary, overrun: s.overrun },
         gb, p.idleRPM, p.limiterRPM,
       );
+      if (auto !== this.autoGear) {
+        this.autoGear = auto;
+        this.sinceAutoShift = 0;
+      }
+      if (auto === 0 || this.manualIdle > MANUAL_HOLD_S) s.manualOffset = 0;
+      const next = auto === 0 ? 0 : this.withinRevRange(clamp(auto + s.manualOffset, 1, gb.gearRatios.length), input.speed);
+      if (auto > 0) s.manualOffset = next - auto;
       if (next !== s.gear) {
         const realShift = s.gear > 0 && next > 0;
         if (realShift) {
@@ -128,6 +174,14 @@ export class VirtualDrivetrain {
       target = Math.max(target, p.idleRPM * (s.overrun ? 0.98 : 1));
       // Under load the engine "pulls" slightly above locked speed (torque-converter feel).
       target += s.throttle * 120;
+    }
+
+    // REV pedal: clutch in, engine climbs toward the limiter for as long as it is held.
+    if (s.revPedal) {
+      this.revRpm = Math.min(p.limiterRPM + 50, Math.max(this.revRpm, p.idleRPM) + REV_RISE_PER_S * dt);
+      target = Math.max(target, this.revRpm);
+    } else {
+      this.revRpm = 0;
     }
 
     // Start-up flare.
@@ -173,6 +227,8 @@ export class VirtualDrivetrain {
       }
     }
 
+    if (s.revPedal) load = 1;
+
     // 5) Engine inertia + slew-rate limit: GPS noise cannot make the needle jump.
     const response = s.shifting ? p.dynamics.engineResponse * 0.4 : p.dynamics.engineResponse;
     let next = expApproach(s.rpm, rpmTarget, dt, response);
@@ -182,5 +238,16 @@ export class VirtualDrivetrain {
     s.rpm = clamp(next, 0, p.limiterRPM + 150);
     s.load = clamp(load, 0, 1);
     return events;
+  }
+
+  /** Nearest gear to `gear` that keeps the engine between just above idle and just below the limiter. */
+  private withinRevRange(gear: number, speedMs: number): number {
+    const p = this.profile;
+    const gb = p.gearbox;
+    const top = gb.gearRatios.length;
+    let g = gear;
+    while (g < top && engineRpmInGear(speedMs, g, gb) > p.limiterRPM - 150) g++;
+    while (g > 1 && g > this.autoGear && engineRpmInGear(speedMs, g, gb) < p.idleRPM * 1.15) g--;
+    return g;
   }
 }

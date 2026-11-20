@@ -299,6 +299,92 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 .setting-note h3 { margin: 18px 0 4px; font-size: 13px; letter-spacing: 0.2em; color: var(--muted); }
 .setting-note p { margin: 0; color: #c9c9d2; font-size: 14px; line-height: 1.5; }
 
+/* ---------- REV pedal (driver side) ---------- */
+.rev-pedal {
+  position: absolute; z-index: 5;
+  left: max(clamp(10px, 1.6vw, 28px), env(safe-area-inset-left));
+  top: 50%; transform: translateY(-42%);
+  width: clamp(84px, 8.5vw, 130px); height: min(46dvh, 340px);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px;
+  padding: 0 0 18px; border-radius: 22px 22px 30px 30px;
+  border: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.07) 0 4px, transparent 4px 14px),
+    linear-gradient(180deg, #24242c, #101015);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.08), 0 10px 30px rgba(0,0,0,0.55);
+  touch-action: none; transition: transform 90ms, box-shadow 90ms, border-color 90ms, opacity 200ms;
+}
+.rev-pedal:disabled { opacity: 0.35; }
+.rev-pedal-grip { flex: 1; }
+.rev-pedal-label { font-family: var(--font-num); font-weight: 900; font-style: italic; font-size: clamp(20px, 2.2vw, 32px); letter-spacing: 0.08em; color: var(--accent-2); }
+.rev-pedal small { font-size: 10px; letter-spacing: 0.3em; color: var(--muted); font-weight: 800; }
+.rev-pedal[data-held='true'] {
+  transform: translateY(-42%) scale(0.95);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 34px rgba(255,59,31,0.55);
+}
+.gear[data-manual='true'] { border-color: rgba(58,168,255,0.6); }
+.gear[data-manual='true'] small { color: var(--blue); }
+
+/* ---------- Light theme ---------- */
+:root[data-theme='light'] {
+  --bg: #eef0f3;
+  --bg-2: #ffffff;
+  --panel: rgba(255, 255, 255, 0.85);
+  --line: rgba(10, 12, 20, 0.12);
+  --text: #12131a;
+  --muted: #5d6170;
+  --dim: #c3c6cf;
+  --accent: #e62e12;
+  --accent-2: #e8650c;
+  --amber: #c98200;
+  --green: #12a35e;
+  --cool: #1d1f27;
+  --blue: #1f7fd6;
+  color-scheme: light;
+}
+[data-theme='light'] .cockpit {
+  background:
+    radial-gradient(120% 80% at 50% 55%, #ffffff 0%, transparent 60%),
+    linear-gradient(#f4f5f7, #e3e6ea);
+}
+[data-theme='light'] .cockpit::after { background: none; }
+[data-theme='light'] .shift-lights span { background: #d5d8de; }
+[data-theme='light'] .seg-cool { fill: #d9dce2; }
+[data-theme='light'] .seg-hot { fill: #f1d9c8; }
+[data-theme='light'] .seg-red { fill: #f3cfc8; }
+[data-theme='light'] .seg-cool.on { fill: var(--cool); filter: none; }
+[data-theme='light'] .seg-hot.on { fill: var(--accent-2); filter: none; }
+[data-theme='light'] .seg-red.on { fill: var(--accent); filter: none; }
+[data-theme='light'] .tach[data-zone='hot'] .seg-cool.on { fill: #8a3a14; }
+[data-theme='light'] .tick-label { fill: #7a7e8b; }
+[data-theme='light'] .speed { background: linear-gradient(180deg, #12131a 30%, #474b57); -webkit-background-clip: text; background-clip: text; }
+[data-theme='light'] .gear { background: linear-gradient(180deg, #ffffff, #f2f3f6); }
+[data-theme='light'] .gear span { text-shadow: none; }
+[data-theme='light'] .meter-track { background: #dfe2e7; }
+[data-theme='light'] .half.top { border-bottom-color: rgba(0,0,0,0.15); }
+[data-theme='light'] .chip { background: rgba(255,255,255,0.7); }
+[data-theme='light'] .chip-bad { color: #b3240e; }
+[data-theme='light'] .notice-warn { color: #7a4f00; }
+[data-theme='light'] .notice-error { color: #a3200b; }
+[data-theme='light'] .dock-btn, [data-theme='light'] .dock-volume { background: rgba(255,255,255,0.75); }
+[data-theme='light'] .dock-btn:active { background: #ffffff; }
+[data-theme='light'] .ignition { background: radial-gradient(circle at 50% 35%, #ffffff, #dde0e6 70%); box-shadow: inset 0 2px 0 #fff, 0 8px 24px rgba(0,0,0,0.15); }
+[data-theme='light'] .sheet-backdrop { background: rgba(20,22,30,0.35); }
+[data-theme='light'] .sheet { background: linear-gradient(180deg, #ffffff, #f1f2f5); box-shadow: 0 -20px 60px rgba(0,0,0,0.18); }
+[data-theme='light'] .sheet-close { background: #f1f2f5; }
+[data-theme='light'] .engine-card, [data-theme='light'] .scenario { background: #ffffff; }
+[data-theme='light'] .badge { background: rgba(0,0,0,0.06); color: #3a3d48; }
+[data-theme='light'] .toggle { color: #2a2d37; }
+[data-theme='light'] .btn { background: #ffffff; }
+[data-theme='light'] .setting-note p { color: #3a3d48; }
+[data-theme='light'] .rev-pedal {
+  background:
+    repeating-linear-gradient(180deg, rgba(0,0,0,0.07) 0 4px, transparent 4px 14px),
+    linear-gradient(180deg, #ffffff, #dfe2e8);
+  box-shadow: inset 0 2px 0 #fff, 0 10px 24px rgba(0,0,0,0.15);
+}
+
 /* ---------- Debug ---------- */
 .debug-overlay {
   position: fixed; top: 64px; left: 12px; z-index: 30; margin: 0;
@@ -327,6 +413,7 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
   .profile-tag { display: none; }
   .dock { flex-wrap: wrap; }
   .chip-profile { display: none; }
+  .rev-pedal { height: 30dvh; width: 76px; }
 }
 @media (max-height: 520px) and (min-aspect-ratio: 4/3) {
   .dock-btn, .dock-volume { min-height: 52px; padding: 6px 14px; }

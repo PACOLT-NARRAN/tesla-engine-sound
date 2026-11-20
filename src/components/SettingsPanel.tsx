@@ -26,6 +26,21 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="setting-row">
+          <span>Shift style</span>
+          <div className="segmented">
+            <button className={s.shiftStyle === 'comfort' ? 'on' : ''} onClick={() => session.setShiftStyle('comfort')}>COMFORT</button>
+            <button className={s.shiftStyle === 'sport' ? 'on' : ''} onClick={() => session.setShiftStyle('sport')}>SPORT</button>
+            <button className={s.shiftStyle === 'track' ? 'on' : ''} onClick={() => session.setShiftStyle('track')}>TRACK</button>
+          </div>
+        </div>
+        <div className="setting-row">
+          <span>Display</span>
+          <div className="segmented">
+            <button className={s.theme === 'dark' ? 'on' : ''} onClick={() => session.setTheme('dark')}>DARK</button>
+            <button className={s.theme === 'light' ? 'on' : ''} onClick={() => session.setTheme('light')}>LIGHT</button>
+          </div>
+        </div>
+        <div className="setting-row">
           <span>Volume</span>
           <input type="range" min={0} max={1} step={0.01} value={s.volume} onChange={(e) => session.setVolume(Number(e.target.value))} />
         </div>
@@ -36,6 +51,12 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="setting-note">
           <h3>Privacy</h3>
           <p>Your location is processed only inside this browser tab to estimate speed. It is never stored or sent anywhere.</p>
+          <h3>Manual shifting</h3>
+          <p>
+            Scroll down on the steering-wheel scroll button (or press ↓) to drop one gear, up to two below the
+            automatic choice; scroll up (↑) to go back up. The gearbox returns to automatic after 15 s.
+            Hold the REV pedal on the left to rev the engine.
+          </p>
           <h3>Safety</h3>
           <p>Set up engine and volume before driving. Keep your eyes on the road.</p>
           <h3>Audio</h3>

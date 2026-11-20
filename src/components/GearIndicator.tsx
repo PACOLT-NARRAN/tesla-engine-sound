@@ -7,8 +7,17 @@ export function GearIndicator() {
   const ref = useRef<HTMLDivElement>(null);
   const letter = useRef<HTMLSpanElement>(null);
   const last = useRef<number>(-1);
+  const mode = useRef<HTMLElement>(null);
+  const lastMode = useRef<string>('');
 
   useFrame(() => {
+    const off = session.telemetry.drivetrain.manualOffset;
+    const m = off === 0 ? 'GEAR' : `MANUAL ${off > 0 ? '+' : '−'}${Math.abs(off)}`;
+    if (m !== lastMode.current && mode.current && ref.current) {
+      mode.current.textContent = m;
+      ref.current.dataset.manual = String(off !== 0);
+      lastMode.current = m;
+    }
     const g = session.telemetry.drivetrain.gear;
     if (g === last.current || !ref.current || !letter.current) return;
     const up = g > last.current;
@@ -23,7 +32,7 @@ export function GearIndicator() {
 
   return (
     <div className="gear" ref={ref} data-neutral="true">
-      <small>GEAR</small>
+      <small ref={mode}>GEAR</small>
       <span ref={letter}>N</span>
     </div>
   );

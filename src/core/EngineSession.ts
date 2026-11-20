@@ -10,7 +10,7 @@ import { DEFAULT_PROFILE_ID, ENGINE_PROFILES, getProfile } from '../profiles/reg
 import type { DrivetrainState } from '../types/drivetrain.ts';
 import type { MotionSource, MotionSourceStatus, MotionState } from '../types/motion.ts';
 import type { EngineProfile } from '../types/profile.ts';
-import { GEARING_FACTOR, loadSettings, saveSettings, withGearing, type Gearing, type Settings } from './settings.ts';
+import { GEARING_FACTOR, SHIFT_STYLE, loadSettings, saveSettings, withGearing, withShiftStyle, type Gearing, type Settings, type ShiftStyle, type Theme } from './settings.ts';
 import { Store } from './Store.ts';
 
 export type IgnitionState = 'off' | 'starting' | 'on';
@@ -57,12 +57,15 @@ export class EngineSession {
   constructor(baseUrl: string) {
     const settings = loadSettings({
       profileId: DEFAULT_PROFILE_ID, volume: 0.8, units: 'kmh',
-      demoScenarioId: DEMO_SCENARIOS[0]?.id ?? 'full-cycle', demoNoise: false, demoNoCoordsSpeed: false, gearing: 'normal',
+      demoScenarioId: DEMO_SCENARIOS[0]?.id ?? 'full-cycle', demoNoise: false, demoNoCoordsSpeed: false, gearing: 'normal', shiftStyle: 'sport', theme: 'dark',
     });
     if (!(settings.gearing in GEARING_FACTOR)) settings.gearing = 'normal';
+    if (!(settings.shiftStyle in SHIFT_STYLE)) settings.shiftStyle = 'sport';
+    if (settings.theme !== 'light') settings.theme = 'dark';
+    applyTheme(settings.theme);
     this.profile = getProfile(settings.profileId) ?? (ENGINE_PROFILES[0] as EngineProfile);
     settings.profileId = this.profile.id;
-    this.drivetrain = new VirtualDrivetrain(withGearing(this.profile, settings.gearing));
+    this.drivetrain = new VirtualDrivetrain(withShiftStyle(withGearing(this.profile, settings.gearing), settings.shiftStyle));
     this.loader = new SoundBankLoader(baseUrl);
     this.store = new Store<SessionState>({
       ...settings,
@@ -205,8 +208,32 @@ export class EngineSession {
     this.drivetrain.setProfile(this.geared(this.profile));
   }
 
+  setShiftStyle(shiftStyle: ShiftStyle): void {
+    this.store.set({ shiftStyle });
+    this.persist();
+    this.drivetrain.setProfile(this.geared(this.profile));
+  }
+
+  setTheme(theme: Theme): void {
+    this.store.set({ theme });
+    this.persist();
+    applyTheme(theme);
+  }
+
+  /** Steering-wheel scroll / keys: one gear down (-1) or up (+1) from what the automatic chose. */
+  manualShift(direction: -1 | 1): void {
+    if (this.store.get().ignition !== 'on') return;
+    this.drivetrain.manualShift(direction);
+  }
+
+  /** On-screen REV pedal held / released. */
+  setRevPedal(down: boolean): void {
+    this.drivetrain.setRevPedal(down && this.store.get().ignition === 'on');
+  }
+
   private geared(p: EngineProfile): EngineProfile {
-    return withGearing(p, this.store.get().gearing);
+    const st = this.store.get();
+    return withShiftStyle(withGearing(p, st.gearing), st.shiftStyle);
   }
 
   // --- Internals -------------------------------------------------------------
@@ -284,6 +311,13 @@ export class EngineSession {
     saveSettings({
       profileId: s.profileId, volume: s.volume, units: s.units,
       demoScenarioId: s.demoScenarioId, demoNoise: s.demoNoise, demoNoCoordsSpeed: s.demoNoCoordsSpeed, gearing: s.gearing,
+      shiftStyle: s.shiftStyle, theme: s.theme,
     });
   }
+}
+
+function applyTheme(theme: Theme): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#eef0f3' : '#050507');
 }

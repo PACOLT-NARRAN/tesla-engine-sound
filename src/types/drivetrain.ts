@@ -19,6 +19,10 @@ export interface DrivetrainState {
   overrun: boolean;
   limiter: boolean;
   running: boolean;
+  /** Driver's manual gear offset from the automatic choice (-2..+2), 0 = fully automatic. */
+  manualOffset: number;
+  /** On-screen REV pedal is held (clutch in, throttle open). */
+  revPedal: boolean;
 }
 
 export type DrivetrainEvent =

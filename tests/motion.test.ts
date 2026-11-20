@@ -108,3 +108,12 @@ test('GPS dropout: becomes stale then lost and stops extrapolating acceleration'
   assert.equal(est.sample(t + 12000).quality, 'lost');
   assert.ok(est.sample(t + 12000).speed < 20, 'no runaway prediction');
 });
+
+test('GPS fixes stamped by a different clock use their arrival time (no false "signal lost")', async () => {
+  const { fixTimestamp } = await import('../src/motion/GeolocationMotionSource.ts');
+  const now = 1_800_000_000_000;
+  assert.equal(fixTimestamp(now - 300, now), now - 300);
+  assert.equal(fixTimestamp(now - 18_000, now), now, 'GPS-time offset');
+  assert.equal(fixTimestamp(now + 3_600_000, now), now, 'timezone-skewed clock');
+  assert.equal(fixTimestamp(0, now), now);
+});

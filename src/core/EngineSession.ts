@@ -33,6 +33,12 @@ import { STATISTICS_SCHEMA, StatsTracker, dayKey, emptyStatistics, type Statisti
 import { ACHIEVEMENTS_SCHEMA, awardAchievements, type AchievementId, type AchievementState, type EngagementContext } from '../engagement/achievements.ts';
 import { USER_PROFILE_SCHEMA, cleanText, type UserProfile } from '../engagement/profileCard.ts';
 import { Store } from './Store.ts';
+import type { MockMode } from '../community/api.ts';
+import type { CommunityEngine } from '../community/models.ts';
+import {
+  COMMUNITY_SCHEMA, canInstall, communityCustomId, engineState, forgetInstall, isCommunityEngineId, recordInstall, setRating,
+  toCustomSpec, toggleFavorite as toggleCommunityFav, type CommunityLocal, type InstallContext,
+} from '../community/install.ts';
 
 export type IgnitionState = 'off' | 'starting' | 'on';
 export type AudioStatus = 'idle' | 'loading' | 'ready' | 'running' | 'suspended' | 'error';
@@ -79,7 +85,14 @@ export interface SessionState extends Settings {
   userProfile: UserProfile;
   /** Achievements just awarded, shown briefly on the Drive screen. */
   achievementToast: { ids: readonly AchievementId[]; at: number } | null;
+  /** Community: what is installed, local favorites and the user's own ratings. */
+  community: CommunityLocal;
+  /** Developer Mode: state the Community mock simulates (not persisted). */
+  communityMock: MockMode;
 }
+
+/** Result of adding Community engines to the Garage. */
+export type CommunityInstallResult = { installed: number; skipped: number; result: 'installed' | 'locked' | 'incompatible' | 'full' | 'invalid' };
 
 /** Result of saving a Sound Studio engine. */
 export type SaveCustomResult = 'saved' | 'locked' | 'invalid' | 'full';
@@ -171,6 +184,7 @@ export class EngineSession {
       planOverride, simulatedPacks, entitlements, activeDrive, activeTransmission, activeEngine, customEngines,
       stats: structuredClone(stats), achievements: storage.load(ACHIEVEMENTS_SCHEMA).value,
       userProfile: storage.load(USER_PROFILE_SCHEMA).value, achievementToast: null,
+      community: storage.load(COMMUNITY_SCHEMA).value, communityMock: 'normal',
     });
     // Award anything already earned before this build (e.g. five favorites) — silently.
     this.evaluateAchievements(false);
@@ -526,9 +540,9 @@ export class EngineSession {
     if (scope !== 'all') return;
     this.storage.clearAll([
       this.settingsSchema.key, FAVORITES_SCHEMA.key, RECENT_SCHEMA.key, DEV_OPTIONS_SCHEMA.key, CUSTOM_ENGINES_SCHEMA.key,
-      STATISTICS_SCHEMA.key, ACHIEVEMENTS_SCHEMA.key, USER_PROFILE_SCHEMA.key,
+      STATISTICS_SCHEMA.key, ACHIEVEMENTS_SCHEMA.key, USER_PROFILE_SCHEMA.key, COMMUNITY_SCHEMA.key,
     ]);
-    this.store.set({ userProfile: USER_PROFILE_SCHEMA.defaults() });
+    this.store.set({ userProfile: USER_PROFILE_SCHEMA.defaults(), community: COMMUNITY_SCHEMA.defaults() });
     this.rebuildCustomProfiles([]);
     this.store.set({ customEngines: [] });
     const d = DEFAULT_SETTINGS;
@@ -599,7 +613,7 @@ export class EngineSession {
    * Saves a new or edited custom engine. Editing the engine that is running applies the change
    * immediately (the sound source may change, so its bank is reloaded).
    */
-  async saveCustomEngine(spec: CustomEngineSpec): Promise<SaveCustomResult> {
+  async saveCustomEngine(spec: CustomEngineSpec, opts: { countAsCreated?: boolean } = {}): Promise<SaveCustomResult> {
     const st = this.store.get();
     if (!canCreateCustomProfile(st.entitlements)) return 'locked';
     if (spec.sound.kind === 'bank' && this.engineLock(spec.sound.bankId) !== null) return 'locked';
@@ -610,7 +624,7 @@ export class EngineSession {
     if (!this.storage.save(CUSTOM_ENGINES_SCHEMA, customEngines) && this.storage.available) return 'full';
     this.rebuildCustomProfiles(customEngines);
     this.store.set({ customEngines });
-    if (!exists) {
+    if (!exists && opts.countAsCreated !== false) {
       this.tracker.noteEngineCreated();
       this.saveStats(true);
     }
@@ -630,10 +644,92 @@ export class EngineSession {
     const favorites = st.favorites.filter((f) => f !== id);
     const recentEngines = st.recentEngines.filter((f) => f !== id);
     this.store.set({ customEngines, favorites, recentEngines });
+    if (isCommunityEngineId(id)) {
+      const community = st.community;
+      const itemId = Object.keys(community.installed).find((k) => communityCustomId(k) === id);
+      if (itemId) this.saveCommunity(forgetInstall(community, itemId));
+    }
     this.storage.save(FAVORITES_SCHEMA, favorites);
     this.storage.save(RECENT_SCHEMA, recentEngines);
     if (st.profileId === id) this.selectDefault();
     else void this.applyEngine();
+  }
+
+  // --- Community (demo Marketplace) -----------------------------------------------------
+
+  /** Everything the install rules need to know about this device. */
+  communityContext(): InstallContext {
+    const st = this.store.get();
+    return {
+      canSaveCustom: canCreateCustomProfile(st.entitlements),
+      hasPro: st.entitlements.plan === 'pro',
+      bankLocked: (id) => this.engineLock(id) !== null,
+      banks: new Set(ENGINE_PROFILES.filter((p) => p.audio.converted).map((p) => p.id)),
+      customIds: new Set(st.customEngines.map((c) => c.id)),
+      local: st.community,
+    };
+  }
+
+  /**
+   * Adds Community engines to the Garage (one engine, or all engines of a pack). Each becomes a
+   * Sound Studio engine; an update overwrites it in place (Favorites and selection are kept).
+   */
+  async installCommunity(engines: readonly CommunityEngine[], lang: Language): Promise<CommunityInstallResult> {
+    let installed = 0;
+    let skipped = 0;
+    let last: CommunityInstallResult['result'] = 'installed';
+    for (const item of engines) {
+      const state = engineState(item, this.communityContext());
+      if (!canInstall(state)) {
+        skipped++;
+        if (state.status === 'locked') last = 'locked';
+        else if (state.status === 'incompatible') last = 'incompatible';
+        continue;
+      }
+      const now = Date.now();
+      const prev = this.store.get().customEngines.find((c) => c.id === communityCustomId(item.id));
+      const r = await this.saveCustomEngine(toCustomSpec(item, lang, now, prev?.createdAt ?? now), { countAsCreated: false });
+      if (r !== 'saved') {
+        skipped++;
+        last = r;
+        continue;
+      }
+      installed++;
+      this.saveCommunity(recordInstall(this.store.get().community, item, now));
+    }
+    return { installed, skipped, result: installed > 0 ? 'installed' : last };
+  }
+
+  /** Removes an installed Community engine from the Garage. */
+  uninstallCommunity(itemId: string): void {
+    const id = communityCustomId(itemId);
+    if (this.store.get().customEngines.some((c) => c.id === id)) this.deleteCustomEngine(id);
+    this.saveCommunity(forgetInstall(this.store.get().community, itemId));
+  }
+
+  toggleCommunityFavorite(itemId: string): void {
+    this.saveCommunity(toggleCommunityFav(this.store.get().community, itemId));
+  }
+
+  /** The user's own stars (kept on this device). The same value again removes the rating. */
+  rateCommunity(itemId: string, stars: number): void {
+    const cur = this.store.get().community.ratings[itemId];
+    this.saveCommunity(setRating(this.store.get().community, itemId, cur === stars ? null : stars));
+  }
+
+  /** Community preview: the normal rev sequence, without installing anything. */
+  async previewCommunity(item: CommunityEngine, lang: Language): Promise<void> {
+    await this.previewProfile(this.customProfile({ ...toCustomSpec(item, lang, 0), id: 'custom-cmpreview' }), `community:${item.id}`);
+  }
+
+  /** Developer Mode: which state the Community mock simulates. */
+  setCommunityMock(communityMock: MockMode): void {
+    this.store.set({ communityMock });
+  }
+
+  private saveCommunity(community: CommunityLocal): void {
+    this.store.set({ community });
+    this.storage.save(COMMUNITY_SCHEMA, community);
   }
 
   private customProfile(spec: CustomEngineSpec): EngineProfile {

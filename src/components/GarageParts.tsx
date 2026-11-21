@@ -3,12 +3,13 @@ import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
 import { getPack } from '../profiles/packs.ts';
 import { useUpgrade } from '../hooks/UpgradeContext.ts';
+import { isCommunityEngineId } from '../community/install.ts';
 
 /** Small controls shared by Garage cards and the engine detail. */
 export function TierBadge({ item }: { item: GarageItem }) {
   const t = useT();
   const pack = getPack(item.packId);
-  if (item.custom) return <span className="tier-badge tier-custom">{t('garage.tier.custom')}</span>;
+  if (item.custom) return <span className="tier-badge tier-custom">{t(isCommunityEngineId(item.profile.id) ? 'garage.tier.community' : 'garage.tier.custom')}</span>;
   const label = item.tier === 'pack' && pack ? pack.name[t.lang] : t(`garage.tier.${item.tier}`);
   return <span className={`tier-badge tier-${item.tier}`}>{label}</span>;
 }

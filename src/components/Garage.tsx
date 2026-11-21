@@ -14,6 +14,7 @@ import { EngineDetail } from './EngineDetail.tsx';
 import { FavoriteButton, LockNote, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
 import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { SoundStudio } from './SoundStudio.tsx';
+import { CommunityPanel } from './CommunityPanel.tsx';
 
 /** Filter chips, grouped with a small gap between groups. */
 const FILTER_GROUPS: readonly (readonly GarageFilter[])[] = [
@@ -36,6 +37,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const [sort, setSort] = useState<GarageSort>('recommended');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [studio, setStudio] = useState<{ spec: CustomEngineSpec; isNew: boolean } | null>(null);
+  const [community, setCommunity] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const upgrade = useUpgrade();
 
@@ -52,13 +54,13 @@ export function Garage({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || detailId !== null || studio !== null) return;
+      if (e.key !== 'Escape' || detailId !== null || studio !== null || community) return;
       if (query) setQuery('');
       else onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [detailId, query, onClose, studio]);
+  }, [detailId, query, onClose, studio, community]);
 
   const openStudio = (spec: CustomEngineSpec | null, isNew: boolean) => {
     session.stopPreview();
@@ -93,6 +95,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
         <button className="btn garage-back" onClick={onClose} aria-label={t('garage.backAria')}>← {t('garage.back')}</button>
         <h2>{t('garage.title')}</h2>
         <span className="garage-count" aria-live="polite">{t('garage.count', { count: list.length })}</span>
+        <button className="btn btn-community" onClick={() => { session.stopPreview(); setCommunity(true); }} data-action="open-community">{t('community.open')}</button>
         <button className="btn btn-store" onClick={() => upgrade.open()} data-action="open-store">{t('store.open')}</button>
         <button className="btn btn-studio" onClick={() => openStudio(null, true)} data-action="new-engine">
           + {t('studio.open')}{!canCreateCustomProfile(s.entitlements) && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
@@ -172,6 +175,8 @@ export function Garage({ onClose }: { onClose: () => void }) {
           onUseAsBase={() => useAsBase(detail)}
         />
       )}
+
+      {community && <CommunityPanel onClose={() => setCommunity(false)} />}
 
       {studio && (
         <SoundStudio

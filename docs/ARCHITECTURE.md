@@ -119,3 +119,11 @@ See `docs/MONETIZATION.md`.
 and plays with its own AudioContext; `contracts.ts` only describes a future backend. Nothing is
 uploaded or stored. The screen (`RecordingLab.tsx`) opens from the Sound Studio. See
 `docs/RECORDING.md`.
+
+## Community (Phase 9, demo Marketplace)
+
+`src/community/` holds the Marketplace domain: `models.ts` (types), `mockData.ts` (bundled demo
+items), `api.ts` (the `MarketplaceApi` boundary, `MockMarketplaceApi`, search) and `install.ts`
+(install / update / lock rules, local favorites and ratings, publication checks). Installing
+saves the engine as a Sound Studio engine (`custom-cm…`), so the Garage and the drivetrain need
+no new code. See `docs/COMMUNITY.md`.

@@ -6,6 +6,7 @@ import { inputDiagnostics } from '../input/InputDiagnostics.ts';
 import { InputDiagnosticsSection } from './InputDiagnosticsSection.tsx';
 import { Sheet } from './Sheet.tsx';
 import { ENGINE_PACKS } from '../profiles/packs.ts';
+import { MOCK_MODES } from '../community/api.ts';
 
 /**
  * Developer Mode panel, reachable only with ?debug=1 (never from normal Settings).
@@ -95,6 +96,16 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <p className="sheet-hint">Development simulation only: works with plan FREE or PRO (AUTO = early access, everything unlocked). Local flags are not payment security — editing localStorage changes what the UI unlocks.</p>
+        <h3>Community mock</h3>
+        <div className="setting-row">
+          <span>Simulate Marketplace state</span>
+          <div className="segmented" data-testid="community-sim">
+            {MOCK_MODES.map((m) => (
+              <button key={m} className={s.communityMock === m ? 'on' : ''} aria-pressed={s.communityMock === m} onClick={() => session.setCommunityMock(m)}>{m.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
+        <p className="sheet-hint">Not saved. Installed community items: {Object.entries(s.community.installed).map(([id, r]) => `${id}@${r.version}`).join(', ') || 'none'}. Local ratings: {Object.keys(s.community.ratings).length}.</p>
         <InputDiagnosticsSection />
         <h3>Local storage</h3>
         <table className="dev-table">

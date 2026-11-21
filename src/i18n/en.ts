@@ -252,7 +252,7 @@ export const en = {
   'settings.transmission': 'Gearbox',
   'settings.transmission.auto': 'AUTOMATIC',
   'settings.transmission.manual': 'MANUAL',
-  'settings.transmissionHint': 'Automatic: the gearbox shifts by itself; the paddles, steering-wheel scroll or ↑/↓ override it by up to two gears for 15 s. Manual: you shift every gear yourself (paddles, scroll, ↑/↓ or E/Q); M switches between the two. The gearbox refuses a downshift that would over-rev and goes down a gear by itself before the engine would stall.',
+  'settings.transmissionHint': 'Automatic: the gearbox shifts by itself; the paddles, steering-wheel scroll or ↑/↓ override it for 15 s – tap repeatedly to skip several gears. Manual: you shift every gear yourself (paddles, scroll, ↑/↓ or E/Q); M switches between the two. The gearbox refuses a downshift that would over-rev and goes down a gear by itself before the engine would stall.',
   'settings.pro': 'PRO',
   'settings.lockedProfile': '{name} is part of REVLINE PRO. On a real drive COMFORT is used; in Demo mode you can try {name} now.',
   'settings.lockedManual': 'Manual shifting is part of REVLINE PRO. You can try it in Demo mode.',

@@ -26,7 +26,7 @@ export type ShiftOutcome =
   | 'applied'
   | 'ignition-off'
   | 'no-gear' // car standing / neutral: there is no automatic gear to offset
-  | 'at-limit' // already two gears below / above the automatic choice
+  | 'at-limit' // already in 1st / top gear
   | 'out-of-range' // first / top gear, or the gear would pass the rev limiter
   | 'over-rev' // manual: downshift would pass the rev limiter
   | 'would-stall' // manual: upshift would drop below idle

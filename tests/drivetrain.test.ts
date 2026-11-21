@@ -166,7 +166,7 @@ test('gearing modes shorten the final drive so full revs come at lower road spee
   assert.equal(p.gearbox.finalDrive, fd);
 });
 
-test('scroll shifting: down drops a gear (max two), up returns, auto resumes after the hold time', async () => {
+test('scroll shifting: down drops a gear (no two-gear limit), up returns, auto resumes after the hold time', async () => {
   const { MANUAL_HOLD_S } = await import('../src/drivetrain/VirtualDrivetrain.ts');
   const dt = new VirtualDrivetrain(testProfile());
   dt.ignite();
@@ -179,10 +179,11 @@ test('scroll shifting: down drops a gear (max two), up returns, auto resumes aft
   dt.manualShift(-1); cruise(60);
   assert.equal(dt.state.gear, auto - 1);
   dt.manualShift(-1); cruise(60);
-  dt.manualShift(-1); cruise(60);
-  assert.equal(dt.state.gear, auto - 2, 'never more than two below automatic');
+  assert.equal(dt.state.gear, auto - 2);
   assert.ok(dt.state.rpm > rpmAuto * 1.4, 'revs rise after downshifts');
-  dt.manualShift(1); cruise(60);
+  dt.manualShift(-1); cruise(60);
+  assert.equal(dt.state.gear, auto - 3, 'more than two gears below automatic is allowed');
+  dt.manualShift(1); dt.manualShift(1); cruise(60);
   assert.equal(dt.state.gear, auto - 1);
   cruise(Math.ceil((MANUAL_HOLD_S + 2) / 0.02));
   assert.equal(dt.state.gear, auto, 'back to automatic');
@@ -226,9 +227,10 @@ test('manualShift reports why a request was refused', () => {
   assert.equal(dt.manualShift(-1), 'no-gear', 'standing car has no automatic gear');
   for (let i = 0; i < 400; i++) dt.update(0.02, { speed: kmh(Math.min(70, i * 0.5)), accel: 1, stationary: false });
   for (let i = 0; i < 300; i++) dt.update(0.02, { speed: kmh(70), accel: 0, stationary: false });
-  assert.equal(dt.manualShift(-1), 'applied');
-  assert.equal(dt.manualShift(-1), 'applied');
-  assert.equal(dt.manualShift(-1), 'at-limit');
+  const auto = dt.state.gear;
+  for (let k = 1; k < auto; k++) assert.equal(dt.manualShift(-1), 'applied', `downshift ${k}`);
+  assert.equal(dt.state.manualOffset, 1 - auto, 'all the way down to 1st');
+  assert.equal(dt.manualShift(-1), 'at-limit', 'below 1st is refused');
 });
 
 test('manual downshift in first gear is refused, not silently reverted', () => {
@@ -236,6 +238,21 @@ test('manual downshift in first gear is refused, not silently reverted', () => {
   dt.ignite();
   for (let i = 0; i < 100; i++) dt.update(0.02, { speed: kmh(8), accel: 0.5, stationary: false });
   assert.equal(dt.state.gear, 1);
-  assert.equal(dt.manualShift(-1), 'out-of-range');
+  assert.equal(dt.manualShift(-1), 'at-limit');
   assert.equal(dt.state.manualOffset, 0);
+});
+
+test('rapid taps skip several gears at once, but never past the rev limiter', () => {
+  const p = testProfile();
+  const dt = new VirtualDrivetrain(p);
+  dt.ignite();
+  for (let i = 0; i < 800; i++) dt.update(0.02, { speed: kmh(Math.min(130, i * 0.5)), accel: 1, stationary: false });
+  for (let i = 0; i < 300; i++) dt.update(0.02, { speed: kmh(130), accel: 0, stationary: false });
+  const auto = dt.state.gear;
+  const results = Array.from({ length: auto + 2 }, () => dt.manualShift(-1));
+  assert.ok(results.filter((r) => r === 'applied').length > 2, `more than two gears: ${results.join(',')}`);
+  assert.equal(results[results.length - 1], 'out-of-range', 'stops where the limiter would be passed');
+  for (let i = 0; i < 100; i++) dt.update(0.02, { speed: kmh(130), accel: 0, stationary: false });
+  assert.ok(dt.state.gear <= auto - 3);
+  assert.ok(dt.state.rpm <= p.limiterRPM + 150);
 });

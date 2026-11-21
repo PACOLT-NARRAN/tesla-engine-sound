@@ -16,7 +16,6 @@ const MAX_RPM_RISE_PER_S = 14000;
 const MAX_RPM_FALL_PER_S = 9000;
 /** Manual gear choice returns to automatic after this long without another scroll. */
 export const MANUAL_HOLD_S = 15;
-export const MAX_MANUAL_OFFSET = 2;
 /** How fast the engine climbs while the REV pedal is held (rpm/s). */
 const REV_RISE_PER_S = 9000;
 /** Manual mode: a gear whose RPM would fall below idle × this is refused / left (anti-stall). */
@@ -33,7 +32,7 @@ export type ManualShiftResult =
   | 'applied'
   | 'not-running'
   | 'no-gear' // automatic mode, car standing: no automatic gear to offset
-  | 'at-limit' // automatic mode: already ±2; manual mode: already in top gear / neutral
+  | 'at-limit' // already in 1st / top gear (manual mode: or neutral)
   | 'out-of-range' // automatic mode: the override would leave the usable rev range
   | 'over-rev' // manual mode: downshift would pass the rev limiter
   | 'would-stall'; // manual mode: upshift would drop the engine below idle
@@ -131,14 +130,16 @@ export class VirtualDrivetrain {
 
   /**
    * Shift request. Automatic mode: one gear lower (-1) / higher (+1) than the automatic choice,
-   * at most ±2, back to automatic after MANUAL_HOLD_S. Manual mode: the next gear itself, with
+   * as far as 1st / top gear and the rev range allow (repeated taps skip several gears), back to
+   * automatic after MANUAL_HOLD_S. Manual mode: the next gear itself, with
    * redline and anti-stall protection; neutral only while standing.
    */
   manualShift(direction: -1 | 1): ManualShiftResult {
     if (!this.s.running) return 'not-running';
     if (this.s.transmission === 'manual') return this.manualModeShift(direction);
     if (this.autoGear === 0) return 'no-gear';
-    const next = clamp(this.s.manualOffset + direction, -MAX_MANUAL_OFFSET, MAX_MANUAL_OFFSET);
+    const top = this.profile.gearbox.gearRatios.length;
+    const next = clamp(this.s.manualOffset + direction, 1 - this.autoGear, top - this.autoGear);
     this.manualIdle = 0;
     if (next === this.s.manualOffset) return 'at-limit';
     // First / top gear, or a gear that would pass the limiter / stall: refuse now instead of

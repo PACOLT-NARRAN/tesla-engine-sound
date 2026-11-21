@@ -9,7 +9,6 @@ import { GearIndicator } from '../components/GearIndicator.tsx';
 import { LoadMeters } from '../components/LoadMeters.tsx';
 import { Notices } from '../components/Notices.tsx';
 import { ProfilePanel } from '../components/ProfilePanel.tsx';
-import { RevPedal } from '../components/RevPedal.tsx';
 import { ShiftPaddles } from '../components/ShiftPaddles.tsx';
 import { SettingsPanel } from '../components/SettingsPanel.tsx';
 import { ShiftLights } from '../components/ShiftLights.tsx';
@@ -66,7 +65,6 @@ export function CockpitPage() {
           </div>
         </section>
       </main>
-      <RevPedal />
       <ShiftPaddles />
       <Notices />
       {panel === null && upgrade === null && <AchievementToast />}

@@ -13,7 +13,7 @@ EngineSession.manualShift(±1) ──► VirtualDrivetrain.manualShift → Shift
 ```
 
 `ShiftOutcome` tells exactly why a request did or did not change gear:
-`applied`, `ignition-off`, `no-gear` (car standing / neutral), `at-limit` (already ±2),
+`applied`, `ignition-off`, `no-gear` (car standing / neutral), `at-limit` (already in 1st / top gear),
 `out-of-range` (first / top gear or the limiter), `debounced`, `blocked` (inside a sheet).
 
 Driving input is active only with the ignition on and no panel open. Events inside an open
@@ -39,3 +39,13 @@ because on a touch screen a swipe on the cockpit also scrolls it.
    - Only `keydown` lines: note the `key` / `code` values; a key adapter mapping is needed.
    - "No compatible wheel event detected" and nothing new in the log: the Tesla browser does not pass the button to web pages.
 6. COPY LOG (or take a photo of the log) and send it.
+
+## Tesla test result (21 November 2026)
+
+- **Parked (P):** the left scroll wheel reaches the page as keyboard `ArrowUp` / `ArrowDown`
+  (`keyup [keyboard] … key=ArrowDown`), so wheel shifting works through the key adapter.
+- **Drive (D):** the car takes the scroll wheel for the cruise-control speed; the page receives
+  no event at all (the diagnostics log stays silent). A web page cannot change this.
+- Consequence: while driving, shifting is done on the touch screen. The ▲ / ▼ paddles therefore
+  sit on the **driver's (left) side** together with the REV pedal in one control rail
+  (`ShiftPaddles.tsx`, `.driver-rail`), within reach of the driver.

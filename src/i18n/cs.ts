@@ -241,7 +241,7 @@ export const cs: Record<MessageKey, string> = {
   'settings.transmission': 'Převodovka',
   'settings.transmission.auto': 'AUTOMAT',
   'settings.transmission.manual': 'MANUÁL',
-  'settings.transmissionHint': 'Automat: řadí sám; pádla, kolečko na volantu nebo ↑/↓ ho na 15 s přeřadí až o dva stupně. Manuál: řadíš každý stupeň sám (pádla, kolečko, ↑/↓ nebo E/Q); klávesa M přepíná mezi nimi. Převodovka odmítne podřazení, které by motor přetočilo, a sama podřadí, než by motor zhasl.',
+  'settings.transmissionHint': 'Automat: řadí sám; pádla, kolečko na volantu nebo ↑/↓ ho na 15 s přeřadí – opakovaným ťuknutím i o několik stupňů najednou. Manuál: řadíš každý stupeň sám (pádla, kolečko, ↑/↓ nebo E/Q); klávesa M přepíná mezi nimi. Převodovka odmítne podřazení, které by motor přetočilo, a sama podřadí, než by motor zhasl.',
   'settings.pro': 'PRO',
   'settings.lockedProfile': '{name} patří do REVLINE PRO. Při skutečné jízdě se použije COMFORT; v režimu Demo si {name} můžeš vyzkoušet hned.',
   'settings.lockedManual': 'Ruční řazení patří do REVLINE PRO. Vyzkoušet ho můžeš v režimu Demo.',

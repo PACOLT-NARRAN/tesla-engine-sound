@@ -26,7 +26,7 @@ keep working.
 ## Gearbox
 
 - **Automatic** (default): the gearbox shifts by itself. The paddles, the wheel scroll and ↑/↓
-  override it by up to ±2 gears for 15 s.
+  override it for 15 s; repeated taps skip several gears (down to 1st / up to top, within the rev range).
 - **Manual**: the driver selects every gear (paddles, scroll, ↑/↓, E/Q); M toggles.
   - Neutral is available only while standing.
   - An upshift that would drop below idle × 0.85 is refused (`would-stall`).

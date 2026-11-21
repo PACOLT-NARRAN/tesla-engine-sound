@@ -1005,3 +1005,36 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 .account-error { margin: 0; color: #ff6a4d; font-size: 14px; }
 .account .setting-hint { margin: 0; padding: 0; border: 0; }
 .account .profile-local { margin-bottom: 10px; }
+
+/* ---------- Driver rail (left): ▲ · REV · ▼ · A/M ----------
+   In Drive the Tesla steering-wheel scroll belongs to cruise control, so the touch paddles move
+   to the driver's side and share one rail with the REV pedal. */
+.cluster { padding-right: clamp(16px, 2.4vw, 40px); }
+.driver-rail.paddles {
+  left: max(clamp(10px, 1.6vw, 28px), env(safe-area-inset-left)); right: auto;
+  top: clamp(52px, 10dvh, 96px); bottom: clamp(122px, 19.5dvh, 172px); height: auto; transform: none;
+  grid-template-rows: minmax(56px, 1fr) minmax(96px, 1.45fr) minmax(56px, 1fr) auto;
+  padding: 8px; gap: 8px; border-radius: 28px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  width: calc(var(--side-ctl) + 16px);
+}
+.driver-rail .paddle-up { border-radius: 20px 20px 12px 12px; }
+.driver-rail .paddle-down { border-radius: 12px 12px 20px 20px; }
+.driver-rail .rev-pedal {
+  position: relative; left: auto; top: auto; transform: none; z-index: auto;
+  width: 100%; height: auto; min-height: 0; border-radius: 14px; padding-bottom: 12px;
+}
+.driver-rail .rev-pedal[data-held='true'] { transform: scale(0.96); }
+.driver-rail .paddle-mode { min-height: 46px; }
+.driver-rail .paddle:active:not(:disabled) { border-color: var(--accent-2); box-shadow: 0 0 0 2px var(--accent-2), 0 0 24px rgba(255,140,40,0.35); }
+.cluster { padding-left: calc(var(--side-ctl) + 16px + clamp(16px, 2.2vw, 36px)); }
+/* The diagnostics overlay ignores touches; keep it beside the rail so the paddles stay visible. */
+.debug-overlay { left: calc(var(--side-ctl) + 40px); max-width: min(640px, calc(100vw - var(--side-ctl) - 56px)); }
+[data-theme='light'] .driver-rail.paddles { background: rgba(0,0,0,0.03); }
+@media (max-aspect-ratio: 4/3) {
+  .cluster { padding-left: 104px; padding-right: 16px; }
+  .driver-rail.paddles { width: 88px; top: 10dvh; bottom: auto; height: min(66dvh, 640px); }
+  .debug-overlay { left: 110px; }
+}

@@ -707,6 +707,13 @@ export const en = {
   'account.err.session-expired': 'Your sign-in has expired. Please sign in again.',
   'account.err.network': 'No connection to the server. Check the internet and try again.',
   'account.err.server': 'The server is not responding right now. Try again later.',
+  'sound.boost': 'BOOST',
+  'sound.boostAria': 'Volume boost: even louder sound',
+  'sound.boostTitle': 'Volume boost',
+  'sound.off': 'OFF',
+  'sound.on': 'ON',
+  'sound.bass': 'Bass boost',
+  'sound.hint': 'The engine is now much louder so it can be heard next to music. Volume boost adds even more (a denser, louder sound, also at low revs). Bass boost strengthens the deep exhaust rumble. The overall speaker volume is still set by the car.',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -152,3 +152,20 @@ twin-charged profiles, 0 otherwise. `audio.shiftBark` fires an exhaust crack on 
   so rpm = 120 x grain Hz holds for all of them.
 - `p60b40` is an older non-granular pack (8 constant-pitch loops at 22 kHz, no names); it still
   uses the synthesiser until it gets a hand-made mapping.
+
+## Output stage (21 November 2026)
+
+`src/audio/outputStage.ts` replaced the single master gain + compressor:
+
+```
+engine level → volume → low shelf 110 Hz (bass) → peak 55 Hz (bass) → drive ×2.5 (×5 with BOOST)
+             → glue compressor (−20 dB, 3.5:1) → limiter (−3 dB, 20:1) → tanh soft clip (ceiling 0.94) → out
+```
+
+- Measured offline in Chromium on an engine-like test signal: about +7 dB average level at the same
+  slider position, more at quiet levels (idle); VOLUME BOOST adds about +2–4 dB more. Peaks stay
+  below 0.95, so nothing clips.
+- Settings: `volumeBoost` (dock BOOST button and Settings) and `bassBoost` 0..1 (Settings slider,
+  up to +12 dB shelf and +6 dB sub peak). Missing fields in older stored settings get the defaults
+  (off / 0), so the settings schema version did not change.
+- The car's own media volume still sets the speaker level; music and REVLINE share it.

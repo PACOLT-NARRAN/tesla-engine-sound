@@ -7,6 +7,10 @@ import { DRIVE_PROFILE_IDS, type DriveProfileId } from '../drivetrain/driveProfi
 export interface Settings {
   profileId: string;
   volume: number;
+  /** Extra loudness (more drive into the output limiter). */
+  volumeBoost: boolean;
+  /** Bass boost 0..1 (low shelf + sub-bass peak). */
+  bassBoost: number;
   units: 'kmh' | 'mph';
   demoScenarioId: string;
   demoNoise: boolean;
@@ -64,6 +68,8 @@ export function settingsSchema(defaults: Settings): StoredSchema<Settings> {
       return {
         profileId: pickString(o.profileId, d.profileId, 64),
         volume: pickNumber(o.volume, 0, 1, d.volume),
+        volumeBoost: pickBool(o.volumeBoost, d.volumeBoost),
+        bassBoost: pickNumber(o.bassBoost, 0, 1, d.bassBoost),
         units: pickEnum(o.units, ['kmh', 'mph'] as const, d.units),
         demoScenarioId: pickString(o.demoScenarioId, d.demoScenarioId, 64),
         demoNoise: pickBool(o.demoNoise, d.demoNoise),

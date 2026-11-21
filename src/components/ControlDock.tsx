@@ -44,14 +44,24 @@ export function ControlDock({ onOpen, profileName, developer = false }: Props) {
         <span>{s.userProfile.displayName || t('dock.profileDefault')}</span>
       </button>
 
-      <label className="dock-volume">
+      <div className="dock-volume">
         <small>{t('dock.vol')}</small>
-        <input
-          type="range" min={0} max={1} step={0.01} value={s.volume}
-          onChange={(e) => session.setVolume(Number(e.target.value))}
-          aria-label={t('dock.volumeAria')}
-        />
-      </label>
+        <div className="dock-volume-row">
+          <input
+            type="range" min={0} max={1} step={0.01} value={s.volume}
+            onChange={(e) => session.setVolume(Number(e.target.value))}
+            aria-label={t('dock.volumeAria')}
+          />
+          <button
+            className="vol-boost"
+            aria-pressed={s.volumeBoost}
+            aria-label={t('sound.boostAria')}
+            onClick={() => session.setVolumeBoost(!s.volumeBoost)}
+          >
+            {t('sound.boost')}
+          </button>
+        </div>
+      </div>
 
       {developer && (
         <button className="dock-btn dev-btn" onClick={() => onOpen('developer')} aria-label="Developer Mode">

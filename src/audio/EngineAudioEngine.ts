@@ -4,6 +4,7 @@ import type { EngineProfile } from '../types/profile.ts';
 import { clamp } from '../utils/math.ts';
 import { bandPlaybackRate, bandWeights, engineLevel, loadGains, soundRpm, toneCutoffHz } from './layerMix.ts';
 import type { LoopSample, SoundBank } from './types.ts';
+import { OutputStage } from './outputStage.ts';
 
 /** Time constants (seconds) for setTargetAtTime: short enough to feel instant, long enough to never click. */
 const TC_RATE = 0.025;
@@ -44,7 +45,8 @@ export interface AudioDebugInfo {
  * Every parameter change is ramped (setTargetAtTime), so nothing clicks.
  *
  * Graph:  band loops -> layer gains -> on/off buses -> voice fade -> tone LPF
- *         -> shift duck -> limiter -> engine level -> master volume -> compressor -> out
+ *         -> shift duck -> limiter -> engine level -> output stage (volume, bass boost, drive,
+ *            compressor, limiter, soft clip; see outputStage.ts) -> out
  */
 export class EngineAudioEngine {
   private ctx: AudioContext | null = null;
@@ -57,6 +59,9 @@ export class EngineAudioEngine {
   private voice: Voice | null = null;
   private profile: EngineProfile | null = null;
   private volume = 0.8;
+  private volumeBoost = false;
+  private bassBoost = 0;
+  private output: OutputStage | null = null;
   private readonly weights: number[] = [];
   private limiterToggle = 0;
   private lastPopAt = 0;
@@ -123,7 +128,18 @@ export class EngineAudioEngine {
 
   setVolume(v: number): void {
     this.volume = clamp(v, 0, 1);
-    if (this.ctx) this.master.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.05);
+    this.output?.apply(this.outputSettings());
+  }
+
+  /** VOLUME BOOST switch and bass boost slider (0..1). */
+  setSoundBoost(o: { volumeBoost?: boolean; bassBoost?: number }): void {
+    if (o.volumeBoost !== undefined) this.volumeBoost = o.volumeBoost;
+    if (o.bassBoost !== undefined) this.bassBoost = clamp(o.bassBoost, 0, 1);
+    this.output?.apply(this.outputSettings());
+  }
+
+  private outputSettings() {
+    return { volume: this.volume, boost: this.volumeBoost, bass: this.bassBoost };
   }
 
   /** Start (or hot-swap to) the given bank. Swaps crossfade over ~0.35 s. */
@@ -262,9 +278,9 @@ export class EngineAudioEngine {
     this.duck = new GainNode(ctx, { gain: 1 });
     this.limiterGain = new GainNode(ctx, { gain: 1 });
     this.level = new GainNode(ctx, { gain: 0 });
-    this.master = new GainNode(ctx, { gain: this.volume });
+    this.output = new OutputStage(ctx, ctx.destination, this.outputSettings());
+    this.master = this.output.input;
     this.popBus = new GainNode(ctx, { gain: 0.9 });
-    const comp = new DynamicsCompressorNode(ctx, { threshold: -10, knee: 8, ratio: 6, attack: 0.004, release: 0.12 });
     this.tone.connect(this.duck).connect(this.limiterGain).connect(this.level).connect(this.master);
     this.popBus.connect(this.master);
 
@@ -293,7 +309,6 @@ export class EngineAudioEngine {
     this.scFilter = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 800, Q: 4 });
     this.scOsc.connect(this.scFilter).connect(this.scGain).connect(this.master);
     this.scOsc.start();
-    this.master.connect(comp).connect(ctx.destination);
   }
 
   private createVoice(ctx: AudioContext, bank: SoundBank): Voice {

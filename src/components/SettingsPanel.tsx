@@ -78,6 +78,22 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <span>{t('settings.volume')}</span>
           <input type="range" min={0} max={1} step={0.01} value={s.volume} aria-label={t('settings.volume')} onChange={(e) => session.setVolume(Number(e.target.value))} />
         </div>
+        <div className="setting-row">
+          <span>{t('sound.boostTitle')}</span>
+          <Segmented
+            value={s.volumeBoost ? 'on' : 'off'}
+            onPick={(v) => session.setVolumeBoost(v === 'on')}
+            options={[{ id: 'off', label: t('sound.off') }, { id: 'on', label: t('sound.on') }]}
+          />
+        </div>
+        <div className="setting-row">
+          <span>{t('sound.bass')}</span>
+          <span className="bass-control">
+            <input type="range" min={0} max={1} step={0.05} value={s.bassBoost} aria-label={t('sound.bass')} onChange={(e) => session.setBassBoost(Number(e.target.value))} data-testid="bass-boost" />
+            <output className="bass-value">{Math.round(s.bassBoost * 100)} %</output>
+          </span>
+        </div>
+        <p className="setting-hint">{t('sound.hint')}</p>
 
         <div className="setting-data">
           <h3>{t('settings.data')}</h3>

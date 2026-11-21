@@ -696,4 +696,11 @@ export const cs: Record<MessageKey, string> = {
   'account.err.session-expired': 'Přihlášení vypršelo. Přihlas se prosím znovu.',
   'account.err.network': 'Není spojení se serverem. Zkontroluj internet a zkus to znovu.',
   'account.err.server': 'Server teď neodpovídá. Zkus to prosím později.',
+  'sound.boost': 'BOOST',
+  'sound.boostAria': 'Volume boost: ještě hlasitější zvuk',
+  'sound.boostTitle': 'Volume boost',
+  'sound.off': 'VYP',
+  'sound.on': 'ZAP',
+  'sound.bass': 'Basy (bass boost)',
+  'sound.hint': 'Zvuk motoru je teď výrazně hlasitější, aby byl slyšet i vedle hudby. Volume boost přidá ještě víc (zvuk je hutnější a hlasitější i v nízkých otáčkách). Basy zesílí hluboké dunění výfuku. Celkovou hlasitost reproduktorů dál ovládá Tesla.',
 };

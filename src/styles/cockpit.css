@@ -400,6 +400,8 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
     linear-gradient(#f4f5f7, #e3e6ea);
 }
 [data-theme='light'] .cockpit::after { background: none; }
+[data-theme='light'] .shift-lights span { background: #d5d8de; }
+[data-theme='light'] .seg-cool { fill: #d9dce2; }
 [data-theme='light'] .seg-hot { fill: #f1d9c8; }
 [data-theme='light'] .seg-red { fill: #f3cfc8; }
 [data-theme='light'] .seg-cool.on { fill: var(--cool); filter: none; }
@@ -410,6 +412,7 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 [data-theme='light'] .speed { background: linear-gradient(180deg, #12131a 30%, #474b57); -webkit-background-clip: text; background-clip: text; }
 [data-theme='light'] .gear { background: linear-gradient(180deg, #ffffff, #f2f3f6); }
 [data-theme='light'] .gear span { text-shadow: none; }
+[data-theme='light'] .meter-track { background: #dfe2e7; }
 [data-theme='light'] .half.top { border-bottom-color: rgba(0,0,0,0.15); }
 [data-theme='light'] .chip { background: rgba(255,255,255,0.7); }
 [data-theme='light'] .chip-bad { color: #b3240e; }
@@ -1036,49 +1039,20 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
   .debug-overlay { left: 110px; }
 }
 
-/* ---------- Tesla palette (21 Nov 2026) ----------
-   Flat backgrounds in the same greys as the Tesla screen, so the app blends into the car UI
-   without a visible colour step or gradient at the browser edge. Change only these variables
-   to fine-tune against the car. */
-:root {
-  --bg: #1c1d20;          /* Tesla dark UI background */
-  --bg-2: #26272b;        /* raised surfaces: sheets, cards */
-  --surface: #2c2d31;     /* buttons, pedal, paddles */
-  --surface-2: #222326;
-  --track: #2f3034;       /* unlit tach segments, meter tracks, shift lights */
-  --panel: rgba(38, 39, 43, 0.92);
-  --line: rgba(255, 255, 255, 0.09);
-  --muted: #8e8f94;
+/* ---------- Volume boost + bass boost ---------- */
+.dock-volume-row { display: flex; align-items: center; gap: 10px; }
+.vol-boost {
+  min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: rgba(255,255,255,0.05); color: var(--muted);
+  font-family: var(--font-num); font-weight: 900; font-style: italic; font-size: 14px; letter-spacing: 0.08em;
+  touch-action: manipulation; transition: background 120ms, color 120ms, box-shadow 120ms;
 }
-:root[data-theme='light'] {
-  --bg: #f4f4f4;          /* Tesla light UI background */
-  --bg-2: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #eeeeee;
-  --track: #dcdddf;
-  --panel: rgba(255, 255, 255, 0.94);
-  --line: rgba(23, 26, 32, 0.12);
-  --muted: #5c5e62;
+.vol-boost[aria-pressed='true'] {
+  color: #fff; border-color: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 16px rgba(255,59,31,0.55);
 }
-body, .cockpit, [data-theme='light'] .cockpit,
-.garage, .studio, .rec-lab, .community,
-[data-theme='light'] .garage, [data-theme='light'] .studio, [data-theme='light'] .rec-lab, [data-theme='light'] .community {
-  background: var(--bg);
-}
-.cockpit::after { content: none; }
-.sheet, [data-theme='light'] .sheet { background: var(--bg-2); }
-.shift-lights span { background: var(--track); }
-.seg-cool { fill: var(--track); }
-.meter-track { background: var(--track); }
-.rev-pedal, .paddle {
-  background:
-    repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 4px, transparent 4px 14px),
-    var(--surface);
-}
-.paddle { background: var(--surface); }
-.ignition { background: var(--surface); }
-[data-theme='light'] .rev-pedal {
-  background: repeating-linear-gradient(180deg, rgba(0,0,0,0.05) 0 4px, transparent 4px 14px), var(--surface);
-}
-[data-theme='light'] .paddle, [data-theme='light'] .ignition { background: var(--surface); }
-.driver-rail.paddles, [data-theme='light'] .driver-rail.paddles { background: var(--surface-2); box-shadow: none; }
+.bass-control { display: inline-flex; align-items: center; gap: 12px; }
+.bass-value { min-width: 52px; text-align: right; font-family: var(--font-num); font-weight: 800; color: var(--muted); }
+[data-theme='light'] .vol-boost { background: #ffffff; }
+[data-theme='light'] .vol-boost[aria-pressed='true'] { color: #fff; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }

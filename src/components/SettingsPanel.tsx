@@ -6,6 +6,7 @@ import { useT } from '../i18n/useT.ts';
 import { DriveSettings } from './DriveSettings.tsx';
 import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { Sheet } from './Sheet.tsx';
+import { BrandMeaning } from './BrandMeaning.tsx';
 
 /** Segmented control with one button per option. */
 function Segmented<T extends string>({ value, options, onPick }: { value: T; options: readonly { id: T; label: string }[]; onPick: (v: T) => void }) {
@@ -142,6 +143,9 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <p>{t('settings.safety')}</p>
           <h3>{t('settings.audioTitle')}</h3>
           <p>{t('settings.audio')}</p>
+          <h3>{t('settings.aboutTitle')}</h3>
+          <p className="about-meaning"><BrandMeaning /></p>
+          <p>{t('settings.about')}</p>
         </div>
       </div>
     </Sheet>

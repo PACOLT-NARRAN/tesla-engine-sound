@@ -138,7 +138,7 @@ export const cs: Record<MessageKey, string> = {
   'settings.privacyTitle': 'Soukromí',
   'settings.privacy': 'Poloha se zpracovává jen v této záložce prohlížeče pro odhad rychlosti. Nikdy se neukládá ani neodesílá.',
   'settings.manualTitle': 'Ruční řazení',
-  'settings.manual': 'Řadíš pádly ▲/▼ vpravo, kolečkem na volantu, ↑/↓ nebo E/Q; M přepíná automat / manuál (viz Převodovka nahoře). Podržením pedálu REV vlevo vytočíš motor.',
+  'settings.manual': 'Řadíš tlačítky ▲/▼ v levém panelu, kolečkem na volantu (jen když auto stojí v P), ↑/↓ nebo E/Q. AUTO / MANUAL nahoře v panelu (nebo klávesa M) přepíná automat a manuál. Podržením REV vytočíš motor, podržením NITRO pustíš páru.',
   'settings.safetyTitle': 'Bezpečnost',
   'settings.safety': 'Motor a hlasitost nastav před jízdou. Sleduj silnici.',
   'settings.audioTitle': 'Zvuk',
@@ -707,4 +707,6 @@ export const cs: Record<MessageKey, string> = {
   'sound.width': 'Prostorovost (stereo)',
   'sound.teslaHint': 'Výšky zvuk zjasní a otevřou. Prostorovost rozprostře zvuk do šířky kabiny; nejhlubší basy zůstávají uprostřed pro subwoofer. Rozložení vpředu / vzadu a ekvalizér se subwooferem nastavíš v Tesle: Ovládání → Audio (Balance a Tón). Webová stránka posílá jen dva kanály (levý a pravý), takže přední a zadní reproduktory řídit nemůže.',
   'hud.nitroAria': 'Nitro (držet): syčení plynu a pára',
+  'settings.aboutTitle': 'O REVLINE',
+  'settings.about': 'Název znamená Responsive Electric Vehicle Live Immersive Natural Experience – živý, pohlcující a přirozený zvuk motoru, který reaguje na to, jak řídíš svůj elektromobil.',
 };

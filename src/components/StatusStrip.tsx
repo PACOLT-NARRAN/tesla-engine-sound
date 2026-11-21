@@ -4,6 +4,7 @@ import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import type { SessionState } from '../core/EngineSession.ts';
 import type { MessageKey } from '../i18n/index.ts';
 import { useT } from '../i18n/useT.ts';
+import { BrandMeaning } from './BrandMeaning.tsx';
 
 type Tone = 'ok' | 'warn' | 'bad' | 'off';
 
@@ -58,7 +59,10 @@ export function StatusStrip({ profileName }: { profileName: string }) {
     <header className="status-strip">
       <div className="brand">
         <span className="brand-mark" />
-        REVLINE
+        <span className="brand-text">
+          <span className="brand-name">REVLINE</span>
+          <BrandMeaning className="brand-tagline" />
+        </span>
       </div>
       <div className="chips">
         <span className={`chip chip-${gps.tone}`}>

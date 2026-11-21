@@ -84,3 +84,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the data flow and the filte
 ## Safety
 
 Configure before driving. Keep the volume at a level where you can hear sirens and traffic.
+
+## The name
+
+**REVLINE** = **R**esponsive **E**lectric **V**ehicle **L**ive **I**mmersive **N**atural **E**xperience.

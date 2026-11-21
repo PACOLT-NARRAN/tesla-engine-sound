@@ -147,7 +147,7 @@ export const en = {
   'settings.privacyTitle': 'Privacy',
   'settings.privacy': 'Your location is processed only inside this browser tab to estimate speed. It is never stored or sent anywhere.',
   'settings.manualTitle': 'Manual shifting',
-  'settings.manual': 'Use the ▲/▼ paddles on the right, the steering-wheel scroll button, ↑/↓ or E/Q to shift; M switches automatic / manual (see Gearbox above). Hold the REV pedal on the left to rev the engine.',
+  'settings.manual': 'Shift with the ▲/▼ buttons in the left panel, the steering-wheel scroll button (only while the car is in P), ↑/↓ or E/Q. AUTO / MANUAL at the top of the panel (or the M key) switches automatic and manual. Hold REV to rev the engine, hold NITRO to purge.',
   'settings.safetyTitle': 'Safety',
   'settings.safety': 'Set up engine and volume before driving. Keep your eyes on the road.',
   'settings.audioTitle': 'Audio',
@@ -718,6 +718,8 @@ export const en = {
   'sound.width': 'Stereo width',
   'sound.teslaHint': 'Treble makes the sound brighter and more open. Stereo width spreads it across the cabin; the deepest bass stays centred for the subwoofer. Front / rear balance and the equalizer with the subwoofer are set in the car: Controls → Audio (Balance and Tone). A web page only sends two channels (left and right), so it cannot steer front and rear speakers.',
   'hud.nitroAria': 'Nitro (hold): gas purge hiss and vapour',
+  'settings.aboutTitle': 'About REVLINE',
+  'settings.about': 'The name stands for Responsive Electric Vehicle Live Immersive Natural Experience: a live, immersive and natural engine sound that responds to how you drive your EV.',
 } as const;
 
 export type MessageKey = keyof typeof en;

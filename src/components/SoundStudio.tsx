@@ -14,6 +14,7 @@ import {
   type IssueField, type NumericField,
 } from '../studio/customEngine.ts';
 import { msToKmh, msToMph } from '../utils/math.ts';
+import { RecordingLab } from './RecordingLab.tsx';
 
 interface Props {
   /** Engine to edit, or the starting point of a new one. */
@@ -38,6 +39,7 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
   const [draft, setDraft] = useState<CustomEngineDraft>(() => toDraft(initial));
   const [touched, setTouched] = useState(false);
   const [confirm, setConfirm] = useState<'delete' | 'discard' | null>(null);
+  const [lab, setLab] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error' | 'lock'; text: string } | null>(null);
   const baseline = useMemo(() => JSON.stringify(toDraft(initial)), [initial]);
   const dirty = JSON.stringify(draft) !== baseline;
@@ -55,7 +57,7 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
   const close = () => (dirty ? setConfirm('discard') : onClose());
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape' || lab) return;
       e.stopPropagation();
       if (confirm) setConfirm(null);
       else if (dirty) setConfirm('discard');
@@ -63,7 +65,7 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [confirm, dirty, onClose]);
+  }, [confirm, dirty, onClose, lab]);
 
   const set = <K extends keyof CustomEngineDraft>(k: K, v: CustomEngineDraft[K]) => {
     setMessage(null);
@@ -227,6 +229,13 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
             {draft.sound.kind === 'bank' && session.engineLock(draft.sound.bankId) !== null && <small className="studio-msg-lock">{t('studio.soundLocked')}</small>}
             {showErrors && errorsOf('sound').map((e) => <small key={e.code} className="studio-error">{issueText(e)}</small>)}
           </label>
+          <div className="rec-entry">
+            <div>
+              <strong>{t('rec.title')}</strong> <span className="tier-badge rec-proto">{t('rec.prototype')}</span>
+              <small className="studio-hint">{t('rec.entryHint')}</small>
+            </div>
+            <button className="btn" onClick={() => { session.stopPreview(); setLab(true); }} data-action="open-recording">{t('rec.open')}</button>
+          </div>
           <Choice label={t('studio.exhaust')} value={draft.exhaust} options={EXHAUSTS.map((x) => ({ id: x, label: t(`studio.exhaust.${x}`) }))} onPick={(v) => set('exhaust', v)} name="exhaust" />
           <div className="studio-grid">
             {pct('crackle', 'studio.crackle', 'studio.crackleHint')}
@@ -328,6 +337,7 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
           </div>
         )}
       </footer>
+      {lab && <RecordingLab onClose={() => setLab(false)} />}
     </div>
   );
 }

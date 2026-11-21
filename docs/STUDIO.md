@@ -14,7 +14,8 @@ A custom engine has two parts:
 
 The Studio never creates a new recording. The editor, the Garage card ("RECORDED SOUND" /
 "SYNTH PREVIEW") and the detail row ("Recorded sound bank of …") say which source plays.
-Uploading your own recordings is a later phase (spec section H).
+Your own recordings can be checked and previewed in **YOUR ENGINE RECORDING** (local prototype,
+see [RECORDING.md](RECORDING.md)); they do not drive the engine sound yet.
 
 ## Files
 

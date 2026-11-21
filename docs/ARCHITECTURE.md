@@ -111,3 +111,11 @@ All feature checks go through `src/entitlements/entitlements.ts`; prices live on
 `products.ts` and `packs.ts`. The session separates the SELECTED engine (`profileId`) from the
 RUNNING one (`activeEngine`): a locked engine plays in Demo, a GPS drive runs the fallback.
 See `docs/MONETIZATION.md`.
+
+## Your engine recording (Phase 8, local prototype)
+
+`src/recording/` holds the "upload your engine recording" prototype. `recording.ts` is pure
+(validation, measurements, waveform, the `LocalRecordingProcessor`); `browserAudio.ts` decodes
+and plays with its own AudioContext; `contracts.ts` only describes a future backend. Nothing is
+uploaded or stored. The screen (`RecordingLab.tsx`) opens from the Sound Studio. See
+`docs/RECORDING.md`.

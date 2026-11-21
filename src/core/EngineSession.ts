@@ -1,3 +1,5 @@
+import { AccountService } from '../backend/account.ts';
+import type { BackendConfig } from '../backend/config.ts';
 import { EngineAudioEngine, type AudioDebugInfo } from '../audio/EngineAudioEngine.ts';
 import { SoundBankLoader, buildPlaceholderBank } from '../audio/SoundBankLoader.ts';
 import type { SoundBank } from '../audio/types.ts';
@@ -142,8 +144,12 @@ export class EngineSession {
   private readonly tracker: StatsTracker;
   private lastStatsSave = 0;
 
-  constructor(baseUrl: string, storage: LocalStore = new LocalStore()) {
+  /** Optional online account (docs/BACKEND.md, M1). 'unavailable' when the build has no backend. */
+  readonly account: AccountService;
+
+  constructor(baseUrl: string, storage: LocalStore = new LocalStore(), backend: BackendConfig | null = null) {
     this.storage = storage;
+    this.account = new AccountService(backend, storage);
     this.settingsSchema = settingsSchema(DEFAULT_SETTINGS);
     const settings = storage.load(this.settingsSchema).value;
     if (!DEMO_SCENARIOS.some((d) => d.id === settings.demoScenarioId)) settings.demoScenarioId = DEFAULT_SETTINGS.demoScenarioId;
@@ -198,6 +204,7 @@ export class EngineSession {
       this.store.set({ audioStatus: s === 'running' ? 'running' : 'suspended' });
     });
     if (typeof window === 'undefined') return;
+    void this.account.start();
     window.addEventListener('online', () => this.store.set({ online: true }));
     window.addEventListener('offline', () => this.store.set({ online: false }));
     document.addEventListener('visibilitychange', () => {
@@ -543,6 +550,8 @@ export class EngineSession {
       STATISTICS_SCHEMA.key, ACHIEVEMENTS_SCHEMA.key, USER_PROFILE_SCHEMA.key, COMMUNITY_SCHEMA.key,
     ]);
     this.store.set({ userProfile: USER_PROFILE_SCHEMA.defaults(), community: COMMUNITY_SCHEMA.defaults() });
+    // Signs out on this device and asks the server to end the session (nothing else is stored online).
+    void this.account.signOut();
     this.rebuildCustomProfiles([]);
     this.store.set({ customEngines: [] });
     const d = DEFAULT_SETTINGS;

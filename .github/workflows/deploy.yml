@@ -33,6 +33,10 @@ jobs:
         env:
           # Project site lives at https://<user>.github.io/<repo>/
           BASE_PATH: /${{ github.event.repository.name }}/
+          # Optional online account (docs/SETUP-SUPABASE.md). Repository VARIABLES, not secrets:
+          # both values are public by design. Empty = the app stays fully local.
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,4 +1,5 @@
 import { createContext, useContext, useSyncExternalStore } from 'react';
+import type { AccountState } from '../backend/account.ts';
 import type { EngineSession, SessionState } from '../core/EngineSession.ts';
 
 export const SessionContext = createContext<EngineSession | null>(null);
@@ -13,4 +14,10 @@ export function useSession(): EngineSession {
 export function useSessionState(): SessionState {
   const s = useSession();
   return useSyncExternalStore(s.store.subscribe, s.store.get);
+}
+
+/** Subscribe to the optional online account (sign-in state). */
+export function useAccount(): AccountState {
+  const s = useSession();
+  return useSyncExternalStore(s.account.store.subscribe, s.account.store.get);
 }

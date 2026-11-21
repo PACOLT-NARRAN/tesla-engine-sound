@@ -994,3 +994,14 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 [data-theme='light'] .cm-status-installed, [data-theme='light'] .cm-installed-tag, [data-theme='light'] .cm-verified { color: #0c7a45; }
 [data-theme='light'] .cm-skeleton span { background: linear-gradient(90deg, #e3e5ea, #f1f2f5, #e3e5ea); background-size: 200% 100%; }
 [data-theme='light'] .cm-star.on { color: #c98200; }
+
+/* ── Phase 11 (M1): optional online account ───────────────────────────── */
+.account-form { display: flex; flex-direction: column; gap: 10px; max-width: 560px; }
+.account-form .studio-field { margin: 0; }
+.account-form input { min-height: 52px; padding: 0 14px; font-size: 18px; }
+.account-code { letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+.account-who { margin: 0 0 6px; font-size: 16px; }
+.account-who strong { color: var(--accent-2); word-break: break-all; }
+.account-error { margin: 0; color: #ff6a4d; font-size: 14px; }
+.account .setting-hint { margin: 0; padding: 0; border: 0; }
+.account .profile-local { margin-bottom: 10px; }

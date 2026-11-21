@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSession, useSessionState } from '../hooks/SessionContext.ts';
+import { useAccount, useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { PROFILE_ISSUES } from '../profiles/registry.ts';
 import { engineTitle } from '../profiles/presentation.ts';
 import { inputDiagnostics } from '../input/InputDiagnostics.ts';
@@ -16,6 +16,7 @@ import { MOCK_MODES } from '../community/api.ts';
 export function DeveloperPanel({ onClose }: { onClose: () => void }) {
   const session = useSession();
   const s = useSessionState();
+  const acc = useAccount();
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const profile = session.currentProfile;
   const storage = [...session.storageReport()].map(([key, r]) => ({ key, ...r }));
@@ -106,6 +107,12 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <p className="sheet-hint">Not saved. Installed community items: {Object.entries(s.community.installed).map(([id, r]) => `${id}@${r.version}`).join(', ') || 'none'}. Local ratings: {Object.keys(s.community.ratings).length}.</p>
+        <h3>Online backend</h3>
+        <p className="sheet-hint" data-testid="dev-backend">
+          {session.account.config
+            ? <>Configured: {new URL(session.account.config.url).host}. Account: {acc.status}{acc.userId ? ` (user ${acc.userId.slice(0, 8)}…)` : ''}{acc.error ? `, last error: ${acc.error}` : ''}. Tokens are never shown.</>
+            : <>Not configured (no VITE_SUPABASE_URL / VITE_SUPABASE_KEY at build time). The app is fully local. See docs/SETUP-SUPABASE.md.</>}
+        </p>
         <InputDiagnosticsSection />
         <h3>Local storage</h3>
         <table className="dev-table">

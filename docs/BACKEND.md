@@ -1,8 +1,9 @@
-# Backend proposal (Phase 10)
+# Backend proposal (Phase 10) and status
 
-**Status: proposal only.** Nothing in this document is implemented. REVLINE still has no server,
-no accounts and no payments. The app stays a static site on GitHub Pages. No provider is set up,
-and no backend is built without explicit approval (spec section AB).
+**Status:** Supabase and Paddle are decided (see "Decisions"). Milestone M1 (optional sign-in) is
+built but stays OFF until the project's two public build variables are set. Payments, protected
+audio, uploads and the online Marketplace are **not** built yet. The app is still a static site on
+GitHub Pages and works fully without any account.
 
 Prices were checked in November 2026 on the providers' own pricing pages. They change; re-check
 them before deciding.
@@ -11,7 +12,7 @@ them before deciding.
 
 ## Shrnutí česky (pro rozhodnutí)
 
-- **Doporučení: Supabase (EU region Frankfurt) + Stripe + malý samostatný „audio worker“ s FFmpeg.**
+- **Rozhodnuto: Supabase (EU region Frankfurt) + Paddle (místo Stripe) + později malý „audio worker“ s FFmpeg.**
   Aplikace dál běží na GitHub Pages. Backend je jen doplněk: bez přihlášení funguje vše jako dnes.
 - **Proč Supabase:**
   - Jedna služba dá přihlášení, databázi (PostgreSQL), úložiště souborů i serverové funkce.
@@ -34,6 +35,17 @@ them before deciding.
   - souhlas s výběrem;
   - kdo bude prodávající (fyzická osoba / firma, DPH);
   - zda prodávat přes Stripe sám, nebo přes „merchant of record“ (viz kapitola Platby).
+
+---
+
+## Decisions (21 November 2026)
+
+| Topic | Decision |
+|---|---|
+| Provider | **Supabase** (EU region), approved. |
+| Seller | The owner, **as a private person (natural person)**, selling **worldwide**. |
+| Payments | **Paddle** as merchant of record for now. Paddle is the seller to the customer and handles VAT / sales tax. Moving to Stripe later stays possible: only the checkout call and the webhook adapter change. |
+| First milestone | **M1 accounts**, built (see section 16). |
 
 ---
 
@@ -269,32 +281,39 @@ The remote implementation of `MarketplaceApi` replaces `MockMarketplaceApi`:
 
 ---
 
-## 10. Payments
+## 10. Payments (Paddle, decided)
 
-- **Stripe Checkout:**
-  - The client calls `create-checkout` with a product SKU.
-  - The function looks up the price **on the server**; the client never sends an amount.
-  - The function creates a Checkout Session with `client_reference_id = user_id` and redirects the
-    full page to Stripe.
-- **Webhook (`stripe-webhook` Edge Function):**
-  - Verifies the Stripe signature. Requests without a valid signature are rejected.
-  - Handles `checkout.session.completed` by writing `orders` and `entitlements` in one transaction.
-  - Is idempotent on the Stripe event id, so duplicate deliveries are harmless.
-  - Handles refunds (`charge.refunded`) and disputes by setting `revoked_at`.
-- **Return page:** the app comes back to `…/tesla-engine-sound/?checkout=success`, then **re-reads
-  entitlements from the server**. It never trusts the URL itself.
+- **Checkout:**
+  - Paddle.js opens Paddle Checkout for a Paddle **price id** that the server looks up from the
+    product SKU. The client never sends an amount.
+  - `customData = { user_id }` links the payment to the REVLINE account.
+  - The Tesla browser should use Paddle's full-page or inline checkout rather than a pop-up.
+- **Webhook (`paddle-webhook` Edge Function):**
+  - Verifies the `Paddle-Signature` header with the webhook secret. Requests without a valid
+    signature are rejected.
+  - Handles `transaction.completed` by writing `orders` and `entitlements` in one transaction.
+  - Is idempotent on the Paddle event id, so duplicate deliveries are harmless.
+  - Handles refunds and chargebacks (`adjustment.created` / `adjustment.updated` when approved) by
+    setting `revoked_at`.
+- **Return:** after checkout the app **re-reads entitlements from the server**. It never trusts a URL
+  or a client callback.
 - **Product shape:** keep today's model.
   - REVLINE PRO is a one-time lifetime purchase.
   - Packs are separate one-time purchases.
-  - No subscriptions at first, so there is no renewal logic.
-- **Tax / legal decision needed:**
-  - Digital sales to EU consumers require VAT charged at the buyer's country rate (EU OSS).
-  - Options:
-    - **Stripe + Stripe Tax:** you are the seller and file OSS VAT returns yourself.
-    - **A merchant of record** (Paddle or Lemon Squeezy): they are the seller and handle VAT. Fees
-      are higher, but there is almost no tax administration.
-  - For one person, a merchant of record is usually simpler. The architecture stays the same; only
-    the webhook adapter changes.
+  - No subscriptions at first.
+- **Paddle's requirements before it approves the account** (from the Paddle seller handbook):
+  - a website with terms and conditions, a refund policy and support contact details;
+  - the seller's legal name in the terms (for a private person: full name);
+  - the sentence that Paddle.com is the online reseller and Merchant of Record;
+  - a domain review; a custom domain (about $10–15 per year) is safer than a `github.io` address;
+  - identity verification of the owner (business verification is not required for individuals).
+- **Fees:** the public rate is 5% + $0.50 per transaction (check the current rate before launch).
+  Chargebacks have a fixed fee.
+- **Owner's own obligations stay:** income tax and, in Czechia, most likely a trade licence
+  (živnostenský list) for regular sales. Check this with an accountant before the first sale; it is
+  not a software question.
+- **Later switch to Stripe:** keep the `orders` / `entitlements` tables. Only replace the checkout
+  call and the webhook adapter, then handle VAT (EU OSS) yourself or with Stripe Tax.
 
 ---
 
@@ -401,3 +420,13 @@ Nothing is built until you approve:
 
 Until then the app stays fully static. Every demo stays honest: nothing can be bought, and nothing
 is uploaded or sent.
+
+---
+
+## 16. Status
+
+| Milestone | State |
+|---|---|
+| M1 Accounts | **Built.** `src/backend/` (config, Auth REST client, `AccountService`), Profile → Account, Developer Mode info, tests. Off until the two build variables exist; setup steps in `docs/SETUP-SUPABASE.md`. |
+| M2 Purchases (Paddle) | Next. Needs the Paddle account approved and the legal pages. |
+| M3–M6 | Not started. |

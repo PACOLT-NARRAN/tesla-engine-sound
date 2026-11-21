@@ -134,3 +134,13 @@ There is still no server. `docs/BACKEND.md` compares Supabase, Firebase and Azur
 Supabase (EU) + Stripe + a separate FFmpeg worker. It plugs into the three existing seams:
 `resolveEntitlements()`, `RecordingBackend` (`src/recording/contracts.ts`) and `MarketplaceApi`
 (`src/community/api.ts`). Nothing is built without approval.
+
+## Online account (M1, optional)
+
+`src/backend/` holds the first online piece: `config.ts` reads two public build variables
+(`VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY`, set from GitHub repository variables in the deploy
+workflow) and refuses secret keys; `authApi.ts` is a small fetch client for Supabase Auth e-mail
+codes; `account.ts` (`AccountService`, owned by `EngineSession.account`) keeps the sign-in state and
+the session in `revline.account.v1`. Without the variables the status is `unavailable` and nothing
+is sent. Signing in unlocks nothing yet. UI: `AccountSection` in the Profile. Setup:
+`docs/SETUP-SUPABASE.md`.

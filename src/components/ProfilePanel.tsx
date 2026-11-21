@@ -10,6 +10,7 @@ import { useT } from '../i18n/useT.ts';
 import { ENGINE_CATALOG } from '../profiles/catalog.ts';
 import { getPack } from '../profiles/packs.ts';
 import { engineTitle } from '../profiles/presentation.ts';
+import { AccountSection } from './AccountSection.tsx';
 import { Sheet } from './Sheet.tsx';
 
 type ShareMsg = 'shared' | 'copied' | 'manual' | null;
@@ -183,6 +184,8 @@ export function ProfilePanel({ onClose }: { onClose: () => void }) {
             <p className="profile-local">{t('profile.shareSafe')}</p>
           </div>
         </div>
+
+        <AccountSection />
 
         <section className="profile-section">
           <h3>{t('profile.statsTitle')}</h3>

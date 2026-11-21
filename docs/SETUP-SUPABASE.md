@@ -5,6 +5,12 @@ aplikace funguje jako dřív a v sekci Účet píše „Online účet zatím nen
 
 Celé to je zdarma (Free plán Supabase). Trvá asi 15 minut.
 
+> **Doména teď NENÍ potřeba.** Tenhle návod funguje s adresou GitHub Pages
+> (`pacolt-narran.github.io/...`). Supabase ve zkušebním režimu ale posílá kódy **jen na e-maily
+> členů tvého týmu v Supabase**, tedy hlavně na tvůj vlastní e-mail. Na testování to stačí.
+> Aby se mohl přihlásit kdokoli, je potřeba vlastní doména a odesílání e-mailů (krok 8 níže).
+> Celé pořadí kroků (Supabase → doména → Paddle) je v [POSTUP.md](POSTUP.md).
+
 > **Bezpečnost:**
 > - Do GitHubu dáváš jen **Project URL** a **Publishable key**. Ty dvě hodnoty jsou veřejné, tak to
 >   Supabase navrhuje.
@@ -85,12 +91,29 @@ Počkej na zelenou fajfku.
 
 Kontrola v Supabase: **Authentication → Users**. Tam uvidíš svůj e-mail jako uživatele.
 
+**Jaký e-mail použít:** ten, kterým jsi přihlášený do Supabase. Když ses přihlásil přes GitHub,
+je to e-mail tvého GitHub účtu. Najdeš ho v Supabase vpravo nahoře (ikona účtu) nebo v
+**Organization settings → Team**. Na jinou adresu kód zatím nepřijde a aplikace napíše
+„Na tuhle adresu teď server e-mail neposílá…“. To je v pořádku, viz krok 8.
+
+## 8. Později: přihlášení pro všechny (až bude doména)
+
+Tohle **teď nedělej**. Přijde na řadu po koupi domény (viz [POSTUP.md](POSTUP.md), krok 3).
+
+1. Založ si účet u služby na odesílání e-mailů, například **Resend** (má tarif zdarma).
+2. V Resend přidej svou doménu a u registrátora domény vlož záznamy DNS, které Resend ukáže.
+3. V Supabase otevři **Authentication → Emails → SMTP Settings**, zapni **Custom SMTP** a vyplň
+   údaje z Resend. Odesílatel bude například `no-reply@tvoje-domena.cz`.
+4. V **Authentication → Rate Limits** zvyš počet e-mailů za hodinu podle potřeby.
+5. V **Authentication → URL Configuration** změň **Site URL** na novou adresu aplikace.
+
 ---
 
 ## Omezení Free plánu (vědět předem)
 
-- **E-maily:** vestavěný odesílač Supabase pošle jen pár e-mailů za hodinu. Na testování to stačí.
-  Před spuštěním pro veřejnost nastavíme vlastní SMTP (například Resend, který má free tarif).
+- **E-maily:** vestavěný odesílač Supabase posílá **jen členům týmu projektu** (tobě) a jen asi
+  2 e-maily za hodinu. Na testování to stačí. Pro veřejnost je potřeba vlastní SMTP s doménou
+  (krok 8).
 - **Uspání:** projekt bez aktivity se po týdnu uspí. Probudíš ho v Supabase tlačítkem **Restore**.
   Až se bude prodávat, přejde se na placený plán Pro, který se neuspává.
 - **Co je uložené:** jen e-mail a technické údaje o přihlášení. Žádná poloha, trasy ani statistiky.
@@ -101,5 +124,6 @@ Kontrola v Supabase: **Authentication → Users**. Tam uvidíš svůj e-mail jak
 |---|---|
 | „Online účet zatím není dostupný“ i po nastavení | Zkontroluj přesné názvy proměnných v kroku 5 a že běh v Actions doběhl po jejich vytvoření. |
 | E-mail přijde s odkazem, ne s kódem | Krok 2: šablona musí obsahovat `{{ .Token }}`, a to v obou šablonách. |
-| „Příliš mnoho pokusů“ | Počkej minutu. Vestavěný odesílač má nízký limit (viz výše). |
+| „Příliš mnoho pokusů“ | Vestavěný odesílač pošle jen asi 2 e-maily za hodinu. Počkej a zkus to později. |
+| „Na tuhle adresu teď server e-mail neposílá“ | Použij e-mail, kterým jsi přihlášený do Supabase (viz krok 7). |
 | E-mail nepřišel | Podívej se do spamu. Zkontroluj, že projekt není uspaný. |

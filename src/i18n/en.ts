@@ -702,6 +702,7 @@ export const en = {
   'account.signOut': 'SIGN OUT',
   'account.err.invalid-email': 'This does not look like a valid e-mail address.',
   'account.err.invalid-code': 'The code is wrong or has expired. Check it, or send a new one.',
+  'account.err.not-authorized': 'The server does not send e-mail to this address yet. Sign-in is still in a test mode for the app owner only.',
   'account.err.rate-limited': 'Too many attempts. Wait a minute and try again.',
   'account.err.session-expired': 'Your sign-in has expired. Please sign in again.',
   'account.err.network': 'No connection to the server. Check the internet and try again.',

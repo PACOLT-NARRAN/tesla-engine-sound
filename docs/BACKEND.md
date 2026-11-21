@@ -425,6 +425,11 @@ is uploaded or sent.
 
 ## 16. Status
 
+Order of the owner's setup steps (Supabase → domain → e-mail SMTP → legal pages → Paddle) is in
+`docs/POSTUP.md` (Czech). Without custom SMTP the Supabase mailer only delivers to members of the
+project's team (about 2 e-mails per hour), so public sign-in needs a domain; the app shows
+`account.err.not-authorized` for that refusal.
+
 | Milestone | State |
 |---|---|
 | M1 Accounts | **Built.** `src/backend/` (config, Auth REST client, `AccountService`), Profile → Account, Developer Mode info, tests. Off until the two build variables exist; setup steps in `docs/SETUP-SUPABASE.md`. |

@@ -691,6 +691,7 @@ export const cs: Record<MessageKey, string> = {
   'account.signOut': 'ODHLÁSIT',
   'account.err.invalid-email': 'Tohle nevypadá jako platná e-mailová adresa.',
   'account.err.invalid-code': 'Kód je špatně nebo vypršel. Zkontroluj ho, nebo si pošli nový.',
+  'account.err.not-authorized': 'Na tuhle adresu teď server e-mail neposílá. Přihlašování je zatím ve zkušebním režimu jen pro správce aplikace.',
   'account.err.rate-limited': 'Příliš mnoho pokusů. Počkej minutu a zkus to znovu.',
   'account.err.session-expired': 'Přihlášení vypršelo. Přihlas se prosím znovu.',
   'account.err.network': 'Není spojení se serverem. Zkontroluj internet a zkus to znovu.',

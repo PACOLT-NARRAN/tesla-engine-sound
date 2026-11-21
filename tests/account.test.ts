@@ -11,7 +11,7 @@ const CONFIG: BackendConfig = { url: 'https://demo.supabase.co', key: 'sb_publis
 interface Call { url: string; method: string; headers: Record<string, string>; body: unknown }
 
 /** Tiny fake Supabase Auth server: one valid code, one valid refresh token at a time. */
-function fakeServer(opts: { code?: string; status?: number; offline?: boolean } = {}) {
+function fakeServer(opts: { code?: string; status?: number; offline?: boolean; body?: unknown } = {}) {
   const calls: Call[] = [];
   let refreshToken = 'r1';
   let n = 1;
@@ -23,7 +23,7 @@ function fakeServer(opts: { code?: string; status?: number; offline?: boolean } 
   const fetch: FetchLike = async (url, init) => {
     calls.push({ url, method: init.method, headers: init.headers, body: init.body ? JSON.parse(init.body) : undefined });
     if (opts.offline) throw new TypeError('Failed to fetch');
-    if (opts.status) return reply(opts.status, { msg: 'nope' });
+    if (opts.status) return reply(opts.status, opts.body ?? { msg: 'nope' });
     const path = url.slice(CONFIG.url.length);
     const body = calls.at(-1)?.body as Record<string, string> | undefined;
     if (path === '/auth/v1/otp') return reply(200, {});
@@ -84,6 +84,10 @@ test('auth api: correct endpoints, headers and error mapping', async () => {
 
   await assert.rejects(new SupabaseAuthApi(CONFIG, fakeServer({ status: 429 }).fetch).requestCode('a@b.cz'), (e: unknown) => e instanceof AuthError && e.code === 'rate-limited');
   await assert.rejects(new SupabaseAuthApi(CONFIG, fakeServer({ status: 503 }).fetch).requestCode('a@b.cz'), (e: unknown) => e instanceof AuthError && e.code === 'server');
+  // Built-in Supabase mailer without custom SMTP: only team members get e-mail.
+  const notAuth = fakeServer({ status: 400, body: { code: 400, error_code: 'email_address_not_authorized', msg: 'Email address "x@y.cz" cannot be used as it is not authorized' } });
+  await assert.rejects(new SupabaseAuthApi(CONFIG, notAuth.fetch).requestCode('x@y.cz'), (e: unknown) => e instanceof AuthError && e.code === 'not-authorized');
+  await assert.rejects(new SupabaseAuthApi(CONFIG, fakeServer({ status: 400 }).fetch).requestCode('a@b.cz'), (e: unknown) => e instanceof AuthError && e.code === 'invalid-email');
   await assert.rejects(new SupabaseAuthApi(CONFIG, fakeServer({ offline: true }).fetch).requestCode('a@b.cz'), (e: unknown) => e instanceof AuthError && e.code === 'network');
   // Invalid input never reaches the network.
   const quiet = fakeServer();

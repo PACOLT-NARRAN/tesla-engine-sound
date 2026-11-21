@@ -8,7 +8,8 @@ import type { BackendConfig } from './config.ts';
  * tested with a fake server.
  */
 
-export type AuthErrorCode = 'invalid-email' | 'invalid-code' | 'rate-limited' | 'session-expired' | 'network' | 'server';
+/** `not-authorized`: Supabase's built-in test mailer only sends to members of the project's team. */
+export type AuthErrorCode = 'invalid-email' | 'invalid-code' | 'rate-limited' | 'not-authorized' | 'session-expired' | 'network' | 'server';
 
 export class AuthError extends Error {
   readonly code: AuthErrorCode;
@@ -91,7 +92,10 @@ export class SupabaseAuthApi {
     if (!isValidEmail(email)) throw new AuthError('invalid-email');
     const res = await this.post('/auth/v1/otp', { email: normalizeEmail(email), create_user: true });
     if (res.ok) return;
-    throw new AuthError(res.status === 429 ? 'rate-limited' : res.status >= 500 ? 'server' : 'invalid-email');
+    if (res.status === 429) throw new AuthError('rate-limited');
+    if (res.status >= 500) throw new AuthError('server');
+    const detail = JSON.stringify(await this.body(res) ?? '').toLowerCase();
+    throw new AuthError(/not[ _-]?authori[sz]ed/.test(detail) ? 'not-authorized' : 'invalid-email');
   }
 
   async verifyCode(email: string, code: string): Promise<AuthSession> {

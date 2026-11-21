@@ -1,4 +1,4 @@
-import type { EngineCatalogEntry, EngineOrigin, LocalizedText } from '../types/catalog.ts';
+import type { EngineCatalogEntry, EngineOrigin, EngineTier, LocalizedText } from '../types/catalog.ts';
 
 const entry = (
   id: string,
@@ -7,7 +7,26 @@ const entry = (
   en: string,
   cs: string,
   tags: readonly string[] = [],
-): EngineCatalogEntry => ({ id, displayName, origin, shortDescription: { en, cs } satisfies LocalizedText, tags, tier: 'free', packId: null });
+): EngineCatalogEntry => ({ id, displayName, origin, shortDescription: { en, cs } satisfies LocalizedText, tags, tier: TIERS[id]?.tier ?? 'free', packId: TIERS[id]?.packId ?? null });
+
+/**
+ * Commercial placement of each engine (product decision, edit freely). Engines not listed are FREE.
+ * PRO = included in REVLINE PRO; pack = sold in a premium engine pack (see packs.ts).
+ * The default engine (gt3flat6) must stay FREE.
+ */
+const TIERS: Readonly<Record<string, { tier: EngineTier; packId: string | null }>> = {
+  m297zonda: { tier: 'pro', packId: null },
+  m158huayra: { tier: 'pro', packId: null },
+  f50v12: { tier: 'pro', packId: null },
+  sestov10: { tier: 'pro', packId: null },
+  musv8: { tier: 'pro', packId: null },
+  rb26dett: { tier: 'pack', packId: 'jdm-legends' },
+  toysupmk4: { tier: 'pack', packId: 'jdm-legends' },
+  rotary7: { tier: 'pack', packId: 'jdm-legends' },
+  lambov10: { tier: 'pack', packId: 'italian-exotics' },
+  murciev12: { tier: 'pack', packId: 'italian-exotics' },
+  f40v8: { tier: 'pack', packId: 'italian-exotics' },
+};
 
 /**
  * Marketing metadata for every built-in engine, keyed by stable engine id.

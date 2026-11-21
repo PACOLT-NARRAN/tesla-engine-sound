@@ -20,10 +20,12 @@ const ctx = { favorites: [] as string[], recent: [] as string[] };
 const run = (q: Partial<GarageQuery>, c = ctx) =>
   queryGarage(items, { filter: 'all', query: '', sort: 'recommended', ...q }, c, (i) => texts.get(i) ?? '', 'en').map((i) => i.profile.id);
 
-test('every built-in engine is a FREE, non-custom item with a marketing title', () => {
+test('every built-in engine is a non-custom item with a marketing title and a valid tier / pack', () => {
   assert.equal(items.length, profiles.length);
   for (const i of items) {
-    assert.equal(i.tier, 'free');
+    assert.ok(['free', 'pro', 'pack'].includes(i.tier));
+    assert.equal(i.tier === 'pack', i.packId !== null, 'pack engines (and only they) name a pack');
+    if (i.packId !== null) assert.ok(getPack(i.packId), `pack ${i.packId} exists`);
     assert.equal(i.custom, false);
     assert.notEqual(i.title, i.profile.id);
   }
@@ -44,10 +46,11 @@ test('filters: induction and layout', () => {
   assert.ok(run({ filter: 'supercharged' }).includes('musv8'));
   assert.ok(run({ filter: 'supercharged' }).includes('predatorv8'));
   assert.ok(!run({ filter: 'turbo' }).includes('predatorv8'));
-  assert.equal(run({ filter: 'pro' }).length, 0);
-  assert.equal(run({ filter: 'pack' }).length, 0);
+  assert.deepEqual(run({ filter: 'pro' }).sort(), ['f50v12', 'm158huayra', 'm297zonda', 'musv8', 'sestov10']);
+  assert.deepEqual(run({ filter: 'pack' }).sort(), ['f40v8', 'lambov10', 'murciev12', 'rb26dett', 'rotary7', 'toysupmk4']);
   assert.equal(run({ filter: 'custom' }).length, 0);
-  assert.equal(run({ filter: 'free' }).length, items.length);
+  assert.equal(run({ filter: 'free' }).length, items.length - 11);
+  assert.ok(run({ filter: 'free' }).includes('gt3flat6'), 'the default engine is FREE');
 });
 
 test('favorites and last used keep the user order', () => {
@@ -101,8 +104,9 @@ test('PRO and pack engines are recognised once metadata says so', () => {
   const [pack] = buildItems([p], () => ({ ...meta, tier: 'pack', packId: 'jdm-legends' }));
   assert.ok(pro && matchesFilter(pro, 'pro', ctx) && !matchesFilter(pro, 'free', ctx));
   assert.ok(pack && matchesFilter(pack, 'pack', ctx));
-  assert.equal(getPack('jdm-legends'), undefined, 'no packs are published yet');
-  assert.equal(getPack('x', [{ id: 'x', name: { en: 'X', cs: 'X' }, description: { en: '', cs: '' } }])?.id, 'x');
+  assert.equal(getPack('jdm-legends')?.name.en, 'JDM LEGENDS');
+  assert.equal(getPack('nope'), undefined);
+  assert.equal(getPack(null), undefined);
 });
 
 test('preview script revs inside its windows and ends', () => {

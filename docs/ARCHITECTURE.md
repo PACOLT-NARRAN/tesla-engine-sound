@@ -104,3 +104,10 @@ Custom engines live in `src/studio/` and are documented in [STUDIO.md](STUDIO.md
 `src/engagement/` holds pure domain services (statistics tracker, achievements, collections,
 challenges, share card). `EngineSession` feeds the tracker from its simulation tick and batches
 storage writes; `ProfilePanel` only displays the results. See `docs/ENGAGEMENT.md`.
+
+## Product tiers and entitlements
+
+All feature checks go through `src/entitlements/entitlements.ts`; prices live only in
+`products.ts` and `packs.ts`. The session separates the SELECTED engine (`profileId`) from the
+RUNNING one (`activeEngine`): a locked engine plays in Demo, a GPS drive runs the fallback.
+See `docs/MONETIZATION.md`.

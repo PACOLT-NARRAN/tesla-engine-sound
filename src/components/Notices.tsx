@@ -1,4 +1,6 @@
-import type { MessageKey } from '../i18n/index.ts';
+import type { MessageKey, Params } from '../i18n/index.ts';
+import { engineTitle } from '../profiles/presentation.ts';
+import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { useT } from '../i18n/useT.ts';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 
@@ -6,6 +8,7 @@ interface Item {
   key: string;
   level: 'info' | 'warn' | 'error';
   text: MessageKey;
+  params?: Params;
   action?: { label: MessageKey; run: () => void };
 }
 
@@ -15,6 +18,7 @@ export function Notices() {
   const session = useSession();
   const t = useT();
   const items: Item[] = [];
+  const upgrade = useUpgrade();
 
   if (s.ignition !== 'off' && s.audioStatus === 'suspended') {
     items.push({ key: 'susp', level: 'error', text: 'notice.audioPaused', action: { label: 'notice.tapToResume', run: () => void session.resumeAudio() } });
@@ -29,6 +33,15 @@ export function Notices() {
     else if (s.motionQuality === 'poor') items.push({ key: 'poor', level: 'info', text: 'notice.gpsPoor' });
     else if (s.motionQuality === 'waiting' && st.kind === 'active') items.push({ key: 'wait', level: 'info', text: 'notice.gpsWaiting' });
   }
+  // Try before you buy: a locked engine plays in Demo; on a GPS drive the fallback engine runs.
+  if (s.ignition === 'on' && s.activeEngine.locked) {
+    const selected = session.findProfile(s.profileId);
+    const running = session.findProfile(s.activeEngine.id);
+    const name = selected ? engineTitle(selected) : '';
+    const unlock = { label: 'garage.unlock' as const, run: () => upgrade.open() };
+    if (s.activeEngine.preview) items.push({ key: 'eng-preview', level: 'info', text: 'notice.enginePreview', params: { name }, action: unlock });
+    else items.push({ key: 'eng-locked', level: 'info', text: 'notice.engineLocked', params: { name, fallback: running ? engineTitle(running) : '' }, action: unlock });
+  }
   if (s.audioIssue) items.push({ key: 'audio', level: 'warn', text: s.audioIssue.kind === 'no-webaudio' ? 'notice.noWebAudio' : 'notice.bankFailed' });
   if (!s.online && s.audioStatus !== 'running') items.push({ key: 'off', level: 'info', text: 'notice.offline' });
 
@@ -37,7 +50,7 @@ export function Notices() {
     <div className="notices" role="status" aria-live="polite">
       {items.slice(0, 2).map((n) => (
         <div key={n.key} className={`notice notice-${n.level}`}>
-          <span>{t(n.text)}</span>
+          <span>{t(n.text, n.params)}</span>
           {n.action && <button className="notice-btn" onClick={n.action.run}>{t(n.action.label)}</button>}
         </div>
       ))}

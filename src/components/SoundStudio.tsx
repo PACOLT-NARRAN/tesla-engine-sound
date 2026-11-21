@@ -116,7 +116,8 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
     if (!canSave) return setMessage({ kind: 'lock', text: t('studio.lockedSave') });
     if (!spec) return setMessage({ kind: 'error', text: t('studio.fixErrors', { count: issues.length }) });
     const r = await session.saveCustomEngine(spec);
-    if (r !== 'saved') return setMessage({ kind: r === 'locked' ? 'lock' : 'error', text: t(`studio.save.${r}`) });
+    const soundLocked = draft.sound.kind === 'bank' && session.engineLock(draft.sound.bankId) !== null;
+    if (r !== 'saved') return setMessage({ kind: r === 'locked' ? 'lock' : 'error', text: r === 'locked' && soundLocked && canSave ? t('studio.soundLocked') : t(`studio.save.${r}`) });
     setMessage({ kind: 'ok', text: t('studio.saved') });
     onSaved(spec.id);
   };
@@ -214,12 +215,16 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
             >
               <option value="synth">{t('studio.soundSynth')}</option>
               <optgroup label={t('studio.soundBanks')}>
-                {BANKS.map((p) => <option key={p.id} value={p.id}>{engineTitle(p)}</option>)}
+                {BANKS.map((p) => {
+                  const lock = session.engineLock(p.id);
+                  return <option key={p.id} value={p.id}>{engineTitle(p)}{lock ? ` · ${t(lock === 'pack' ? 'garage.tier.pack' : 'garage.tier.pro')}` : ''}</option>;
+                })}
               </optgroup>
             </select>
             <small className="studio-hint">
               {draft.sound.kind === 'bank' ? t('studio.soundBankHint', { name: bankName(draft.sound.bankId) }) : t('studio.soundSynthHint')}
             </small>
+            {draft.sound.kind === 'bank' && session.engineLock(draft.sound.bankId) !== null && <small className="studio-msg-lock">{t('studio.soundLocked')}</small>}
             {showErrors && errorsOf('sound').map((e) => <small key={e.code} className="studio-error">{issueText(e)}</small>)}
           </label>
           <Choice label={t('studio.exhaust')} value={draft.exhaust} options={EXHAUSTS.map((x) => ({ id: x, label: t(`studio.exhaust.${x}`) }))} onPick={(v) => set('exhaust', v)} name="exhaust" />

@@ -7,7 +7,7 @@ import type { Language } from '../i18n/index.ts';
  */
 export type LocalizedText = Readonly<Record<Language, string>>;
 
-/** Commercial tier. Every built-in engine is FREE today; entitlements arrive in a later phase. */
+/** Commercial tier (see TIERS in src/profiles/catalog.ts). */
 export type EngineTier = 'free' | 'pro' | 'pack';
 
 export type EngineOrigin = 'italian' | 'german' | 'american' | 'japanese' | 'british' | 'generic';

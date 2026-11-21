@@ -5,6 +5,7 @@ import { engineTitle } from '../profiles/presentation.ts';
 import { inputDiagnostics } from '../input/InputDiagnostics.ts';
 import { InputDiagnosticsSection } from './InputDiagnosticsSection.tsx';
 import { Sheet } from './Sheet.tsx';
+import { ENGINE_PACKS } from '../profiles/packs.ts';
 
 /**
  * Developer Mode panel, reachable only with ?debug=1 (never from normal Settings).
@@ -70,6 +71,8 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
         <table className="dev-table">
           <tbody>
             <tr><th>plan</th><td>{s.entitlements.plan}{s.entitlements.earlyAccess ? ' (early access)' : ''}{s.entitlements.simulated ? ' (simulated)' : ''}</td></tr>
+            <tr><th>owned packs</th><td>{s.entitlements.ownedPackIds.join(', ') || '—'}</td></tr>
+            <tr><th>engine</th><td>selected {s.profileId} → running {s.activeEngine.id}{s.activeEngine.locked ? (s.activeEngine.preview ? ' (locked, demo preview)' : ' (locked, fallback)') : ''}</td></tr>
             <tr><th>drive profile</th><td>selected {s.shiftStyle} → running {s.activeDrive.id}{s.activeDrive.locked ? (s.activeDrive.preview ? ' (locked, demo preview)' : ' (locked, fallback)') : ''}</td></tr>
             <tr><th>gearbox</th><td>selected {s.transmission} → running {s.activeTransmission}</td></tr>
           </tbody>
@@ -82,6 +85,16 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+        <div className="setting-row">
+          <span>Simulate owned packs</span>
+          <div className="segmented" data-testid="pack-sim">
+            {ENGINE_PACKS.map((p) => {
+              const on = s.simulatedPacks.includes(p.id);
+              return <button key={p.id} className={on ? 'on' : ''} aria-pressed={on} onClick={() => session.setSimulatedPack(p.id, !on)}>{p.name.en}</button>;
+            })}
+          </div>
+        </div>
+        <p className="sheet-hint">Development simulation only: works with plan FREE or PRO (AUTO = early access, everything unlocked). Local flags are not payment security — editing localStorage changes what the UI unlocks.</p>
         <InputDiagnosticsSection />
         <h3>Local storage</h3>
         <table className="dev-table">

@@ -4,6 +4,7 @@ import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import type { MessageKey } from '../i18n/index.ts';
 import { useT } from '../i18n/useT.ts';
 import { DriveSettings } from './DriveSettings.tsx';
+import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { Sheet } from './Sheet.tsx';
 
 /** Segmented control with one button per option. */
@@ -31,10 +32,18 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const [confirm, setConfirm] = useState<ResetScope | null>(null);
   const [done, setDone] = useState<ResetScope | null>(null);
+  const upgrade = useUpgrade();
 
   return (
     <Sheet title={t('settings.title')} onClose={onClose}>
       <div className="settings">
+        <button className="store-entry" onClick={() => upgrade.open()} data-action="open-store">
+          <span>
+            <strong>{t('store.entryTitle')}</strong>
+            <small>{t(s.entitlements.simulated ? 'store.entrySim' : s.entitlements.earlyAccess ? 'store.entryEarly' : s.entitlements.plan === 'pro' ? 'store.entryPro' : 'store.entryFree')}</small>
+          </span>
+          <span className="store-entry-go">›</span>
+        </button>
         <div className="setting-row">
           <span>{t('settings.units')}</span>
           <Segmented value={s.units} onPick={(u) => session.setUnits(u)} options={[{ id: 'kmh', label: 'KM/H' }, { id: 'mph', label: 'MPH' }]} />

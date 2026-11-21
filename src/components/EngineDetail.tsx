@@ -4,7 +4,8 @@ import { useT } from '../i18n/useT.ts';
 import { getPack } from '../profiles/packs.ts';
 import { engineDescription, engineInduction, engineLayout, engineSubtitle, engineTitle } from '../profiles/presentation.ts';
 import { getProfile } from '../profiles/registry.ts';
-import { FavoriteButton, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
+import { FavoriteButton, LockNote, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
+import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { Sheet } from './Sheet.tsx';
 
 /** Engine details inside the Garage: full technical data and the main actions. */
@@ -20,6 +21,8 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
   const gb = p.gearbox;
   const rpm = (v: number) => t('garage.rpmUnit', { rpm: t.num(v) });
   const allowed = session.canSelect(p.id);
+  const locked = !item.custom && session.engineLock(p.id) !== null;
+  const upgrade = useUpgrade();
   const borrowed = item.custom && p.audio.converted ? getProfile(p.source.soundName) : undefined;
   const sound = borrowed ? t('garage.spec.soundBorrowed', { name: engineTitle(borrowed) }) : p.audio.converted ? t('garage.spec.soundReal') : t('garage.spec.soundSynth');
 
@@ -57,9 +60,13 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
         <div className="detail-actions">
           <PreviewButton id={p.id} name={item.title} />
           {!selected && allowed && <button className="btn" onClick={() => void session.selectProfile(p.id)}>{t('garage.select')}</button>}
-          <button className="btn btn-primary" onClick={onDrive} disabled={!allowed}>
-            {t('garage.drive')}{!allowed && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
-          </button>
+          {locked ? (
+            <button className="btn btn-primary" onClick={() => upgrade.tryInDemo(p.id)} data-action="try-demo">{t('store.tryDemo')}</button>
+          ) : (
+            <button className="btn btn-primary" onClick={onDrive} disabled={!allowed}>
+              {t('garage.drive')}{!allowed && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
+            </button>
+          )}
         </div>
         <div className="detail-actions detail-studio">
           {item.custom
@@ -67,6 +74,7 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
             : <button className="btn" onClick={onUseAsBase} data-action="use-as-base">{t('studio.useAsBase')}</button>}
         </div>
         {!allowed && <p className="setting-lock">{t('studio.lockedDrive')}</p>}
+        <LockNote item={item} />
         {s.ignition !== 'off' && <p className="sheet-hint">{t('garage.previewOff')}</p>}
         <h3 className="detail-title">{t('garage.spec.title')}</h3>
         <table className="spec-table">

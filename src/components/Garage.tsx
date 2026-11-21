@@ -11,7 +11,8 @@ import { engineDescription, engineInduction, engineLayout, engineSubtitle } from
 import { canCreateCustomProfile } from '../entitlements/entitlements.ts';
 import { defaultSpec, specFromProfile, type CustomEngineSpec } from '../studio/customEngine.ts';
 import { EngineDetail } from './EngineDetail.tsx';
-import { FavoriteButton, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
+import { FavoriteButton, LockNote, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
+import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { SoundStudio } from './SoundStudio.tsx';
 
 /** Filter chips, grouped with a small gap between groups. */
@@ -36,6 +37,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [studio, setStudio] = useState<{ spec: CustomEngineSpec; isNew: boolean } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const upgrade = useUpgrade();
 
   const items = useMemo(() => buildItems(session.allProfiles(), getCatalogEntry), [session, s.customEngines]);
   const texts = useMemo(() => new Map(items.map((i) => [i, searchText(i, searchLabels(i))])), [items]);
@@ -91,6 +93,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
         <button className="btn garage-back" onClick={onClose} aria-label={t('garage.backAria')}>← {t('garage.back')}</button>
         <h2>{t('garage.title')}</h2>
         <span className="garage-count" aria-live="polite">{t('garage.count', { count: list.length })}</span>
+        <button className="btn btn-store" onClick={() => upgrade.open()} data-action="open-store">{t('store.open')}</button>
         <button className="btn btn-studio" onClick={() => openStudio(null, true)} data-action="new-engine">
           + {t('studio.open')}{!canCreateCustomProfile(s.entitlements) && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
         </button>
@@ -194,8 +197,10 @@ function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: 
   const selected = p.id === s.profileId;
   const name = item.title;
   const allowed = session.canSelect(p.id);
+  const locked = !item.custom && session.engineLock(p.id) !== null;
+  const upgrade = useUpgrade();
   return (
-    <article className={`g-card ${selected ? 'selected' : ''}`} data-engine-id={p.id} data-custom={item.custom}>
+    <article className={`g-card ${selected ? 'selected' : ''} ${locked ? 'g-card-locked' : ''}`} data-engine-id={p.id} data-custom={item.custom} data-locked={locked}>
       <div className="g-card-top">
         <TierBadge item={item} />
         <span className="badge">{engineLayout(p, t)}</span>
@@ -216,6 +221,9 @@ function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: 
       <div className="g-card-actions">
         <PreviewButton id={p.id} name={name} />
         {item.custom && <button className="btn" onClick={onEdit} aria-label={t('studio.editAria', { name })} data-action="edit">{t('studio.edit')}</button>}
+        {locked && !selected ? (
+          <button className="btn btn-primary" onClick={() => upgrade.tryInDemo(p.id)} data-action="try-demo">{t('store.tryDemo')}</button>
+        ) : (
         <button
           className={`btn ${selected ? 'btn-selected' : 'btn-primary'}`}
           onClick={() => void session.selectProfile(p.id)}
@@ -226,7 +234,9 @@ function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: 
           {selected ? `✓ ${t('garage.selected')}` : t('garage.select')}
           {!allowed && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
         </button>
+        )}
       </div>
+      <LockNote item={item} compact />
     </article>
   );
 }

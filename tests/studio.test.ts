@@ -178,10 +178,10 @@ test('entitlements: Studio save, own ratios and driving custom engines are PRO; 
   const pro = resolveEntitlements('pro');
   assert.equal(canCreateCustomProfile(free), false);
   assert.equal(canUseCustomGearing(free), false);
-  assert.equal(canUseEngine(free, { custom: true }), false);
-  assert.equal(canUseEngine(free, { custom: false }), true);
+  assert.equal(canUseEngine(free, { custom: true, tier: 'free', packId: null }), false);
+  assert.equal(canUseEngine(free, { custom: false, tier: 'free', packId: null }), true);
   assert.equal(canCreateCustomProfile(pro), true);
-  assert.equal(canUseEngine(pro, { custom: true }), true);
+  assert.equal(canUseEngine(pro, { custom: true, tier: 'free', packId: null }), true);
   assert.equal(canCreateCustomProfile(resolveEntitlements('auto')), true, 'early access unlocks everything');
 });
 

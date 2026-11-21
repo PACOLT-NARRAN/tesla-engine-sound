@@ -266,7 +266,6 @@ test('entitlements: early access unlocks everything today', () => {
   const e = resolveEntitlements('auto');
   assert.equal(e.plan, 'pro');
   assert.ok(hasCapability(e, 'manual-shifting'));
-  assert.equal(PRODUCT.proLifetimePriceEur, 9.99);
 });
 
 test('entitlements: FREE locks SPORT/TRACK/manual on a GPS drive, never COMFORT', () => {

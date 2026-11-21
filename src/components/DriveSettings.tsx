@@ -2,6 +2,7 @@ import { DRIVE_PROFILE_IDS } from '../drivetrain/driveProfiles.ts';
 import { isDriveProfileLocked, hasCapability } from '../entitlements/entitlements.ts';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
+import { useUpgrade } from '../hooks/UpgradeContext.ts';
 
 /** Settings → Drive profile (COMFORT / SPORT / TRACK) and Gearbox (automatic / manual). */
 export function DriveSettings() {
@@ -12,6 +13,8 @@ export function DriveSettings() {
   const selectedLocked = isDriveProfileLocked(ent, s.shiftStyle);
   const manualLocked = !hasCapability(ent, 'manual-shifting');
   const name = t(`drive.${s.shiftStyle}`);
+  const upgrade = useUpgrade();
+  const unlock = <button className="btn btn-unlock" onClick={() => upgrade.open()} data-action="unlock">{t('garage.unlockPro')}</button>;
 
   return (
     <section className="drive-settings" aria-label={t('settings.driveProfile')}>
@@ -38,7 +41,7 @@ export function DriveSettings() {
           );
         })}
       </div>
-      {selectedLocked && <p className="setting-lock" role="status">{t('settings.lockedProfile', { name })}</p>}
+      {selectedLocked && <div className="lock-note" role="status"><span>{t('settings.lockedProfile', { name })}</span>{unlock}</div>}
 
       <div className="setting-row setting-row-hint">
         <span>{t('settings.transmission')}</span>
@@ -58,7 +61,7 @@ export function DriveSettings() {
         </div>
       </div>
       <p className="setting-hint">{t('settings.transmissionHint')}</p>
-      {s.transmission === 'manual' && manualLocked && <p className="setting-lock" role="status">{t('settings.lockedManual')}</p>}
+      {s.transmission === 'manual' && manualLocked && <div className="lock-note" role="status"><span>{t('settings.lockedManual')}</span>{unlock}</div>}
       {ent.earlyAccess && <p className="setting-early">{t('settings.earlyAccess')}</p>}
     </section>
   );

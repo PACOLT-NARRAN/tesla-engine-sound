@@ -2,6 +2,7 @@ import type { GarageItem } from '../garage/garage.ts';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
 import { getPack } from '../profiles/packs.ts';
+import { useUpgrade } from '../hooks/UpgradeContext.ts';
 
 /** Small controls shared by Garage cards and the engine detail. */
 export function TierBadge({ item }: { item: GarageItem }) {
@@ -55,4 +56,27 @@ export function SoundBadge({ item }: { item: GarageItem }) {
   if (!p.audio.converted) return <span className="badge badge-synth">{t('engines.synthPreview')}</span>;
   if (item.custom) return <span className="badge badge-real">{t('garage.soundBorrowed')}</span>;
   return null;
+}
+
+/**
+ * Lock explanation of a built-in engine that may not be driven on GPS yet: what is locked, how
+ * to try it (Garage preview, Demo) and a button to the PRO / pack screen. Null when unlocked.
+ */
+export function LockNote({ item, compact = false }: { item: GarageItem; compact?: boolean }) {
+  const session = useSession();
+  useSessionState();
+  const t = useT();
+  const upgrade = useUpgrade();
+  const lock = item.custom ? null : session.engineLock(item.profile.id);
+  if (lock === null) return null;
+  const pack = getPack(item.packId);
+  const text = lock === 'pack' && pack ? t('garage.lock.pack', { pack: pack.name[t.lang] }) : t('garage.lock.pro');
+  return (
+    <div className={`lock-note ${compact ? 'lock-note-compact' : ''}`} data-lock={lock}>
+      <span>{compact ? t('garage.lock.short') : text}</span>
+      <button className="btn btn-unlock" onClick={() => upgrade.open(lock === 'pack' ? item.packId ?? undefined : undefined)} data-action="unlock">
+        {lock === 'pack' ? t('garage.unlockPack') : t('garage.unlockPro')}
+      </button>
+    </div>
+  );
 }

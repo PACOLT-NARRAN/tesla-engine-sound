@@ -17,7 +17,12 @@ import type { ShiftOutcome } from '../input/types.ts';
 import { LocalStore, type StoredSchema } from '../storage/storage.ts';
 import { settingsSchema, withGearing, type Gearing, type Settings, type ShiftStyle, type Theme, type Transmission } from './settings.ts';
 import { applyDriveProfile, getDriveProfile, type DriveProfileId } from '../drivetrain/driveProfiles.ts';
-import { canCreateCustomProfile, canUseEngine, canUseManual, effectiveDriveProfile, resolveEntitlements, type Entitlements, type PlanOverride } from '../entitlements/entitlements.ts';
+import {
+  FREE_ENGINE, PRODUCT, canCreateCustomProfile, canUseAdvancedOverrun, canUseEngine, canUseManual, effectiveDriveProfile, effectiveEngine,
+  engineLock, resolveEntitlements, type EngineLock, type EngineRequirement, type Entitlements, type PlanOverride,
+} from '../entitlements/entitlements.ts';
+import { basicSoundModel } from '../audio/soundModel.ts';
+import { getCatalogEntry } from '../profiles/catalog.ts';
 import {
   CUSTOM_ENGINES_SCHEMA, MAX_CUSTOM_ENGINES, buildCustomProfile, isCustomId, upsertSpec, validateSpec, type CustomEngineSpec,
 } from '../studio/customEngine.ts';
@@ -57,6 +62,13 @@ export interface SessionState extends Settings {
   entitlements: Entitlements;
   /** Drive Profile actually running (a locked choice falls back to COMFORT on a GPS drive). */
   activeDrive: { id: DriveProfileId; locked: boolean; preview: boolean };
+  /** Developer Mode: packs simulated as owned. */
+  simulatedPacks: readonly string[];
+  /**
+   * Engine actually running. `profileId` is the SELECTED engine; a locked one plays in Demo as a
+   * preview, while a GPS drive runs the fallback engine (the last engine the user may drive).
+   */
+  activeEngine: { id: string; locked: boolean; preview: boolean };
   /** Gearbox actually running (manual needs PRO on a GPS drive). */
   activeTransmission: Transmission;
   /** Sound Studio engines saved in this browser. */
@@ -113,6 +125,7 @@ export class EngineSession {
   private previewTimer: ReturnType<typeof setInterval> | null = null;
   private previewToken = 0;
   private customProfiles = new Map<string, EngineProfile>();
+  private customSpecs = new Map<string, CustomEngineSpec>();
   private readonly tracker: StatsTracker;
   private lastStatsSave = 0;
 
@@ -126,11 +139,12 @@ export class EngineSession {
     const stats = storage.load(STATISTICS_SCHEMA).value;
     this.tracker = new StatsTracker(structuredClone(stats));
     this.rebuildCustomProfiles(customEngines);
-    const { scrollTrap, plan: planOverride } = storage.load(DEV_OPTIONS_SCHEMA).value;
-    const entitlements = resolveEntitlements(planOverride);
+    const { scrollTrap, plan: planOverride, packs: simulatedPacks } = storage.load(DEV_OPTIONS_SCHEMA).value;
+    const entitlements = resolveEntitlements(planOverride, PRODUCT.earlyAccess, simulatedPacks);
     const saved = this.findProfile(settings.profileId);
-    this.profile = saved && canUseEngine(entitlements, { custom: isCustomId(saved.id) }) ? saved : (getProfile(DEFAULT_PROFILE_ID) ?? (ENGINE_PROFILES[0] as EngineProfile));
-    settings.profileId = this.profile.id;
+    // A custom engine the user may no longer drive is not kept selected (built-in ones are: try before buy).
+    const selected = saved && (!isCustomId(saved.id) || canUseEngine(entitlements, this.requirement(saved.id))) ? saved : defaultProfile();
+    settings.profileId = selected.id;
     const locale = settings.language ?? browserLanguage();
     applyLanguage(locale);
 
@@ -138,10 +152,13 @@ export class EngineSession {
     const known = new Set([...ENGINE_PROFILES.map((p) => p.id), ...this.customProfiles.keys()]);
     const favorites = this.loadIdList(FAVORITES_SCHEMA, known);
     const recentEngines = this.loadIdList(RECENT_SCHEMA, known);
+    const activeEngine = effectiveEngine(entitlements, { id: selected.id, requirement: this.requirement(selected.id) }, 'gps', this.fallbackId(entitlements, recentEngines));
+    this.profile = this.findProfile(activeEngine.id) ?? defaultProfile();
     const activeDrive = effectiveDriveProfile(entitlements, settings.shiftStyle, 'gps');
     const activeTransmission: Transmission = settings.transmission === 'manual' && canUseManual(entitlements, 'gps') ? 'manual' : 'auto';
     const drive = getDriveProfile(activeDrive.id);
-    this.drivetrain = new VirtualDrivetrain(applyDriveProfile(withGearing(this.profile, settings.gearing), drive), drive);
+    const sound = (p: EngineProfile) => (canUseAdvancedOverrun(entitlements, 'gps') ? p : basicSoundModel(p));
+    this.drivetrain = new VirtualDrivetrain(sound(applyDriveProfile(withGearing(this.profile, settings.gearing), drive)), drive);
     this.drivetrain.setTransmission(activeTransmission);
     this.audio.setDriveTuning(drive);
     this.loader = new SoundBankLoader(baseUrl);
@@ -151,7 +168,7 @@ export class EngineSession {
       audioStatus: 'idle', bankKind: null, audioIssue: null,
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
       favorites, recentEngines, locale, scrollTrap, preview: null,
-      planOverride, entitlements, activeDrive, activeTransmission, customEngines,
+      planOverride, simulatedPacks, entitlements, activeDrive, activeTransmission, activeEngine, customEngines,
       stats: structuredClone(stats), achievements: storage.load(ACHIEVEMENTS_SCHEMA).value,
       userProfile: storage.load(USER_PROFILE_SCHEMA).value, achievementToast: null,
     });
@@ -191,9 +208,29 @@ export class EngineSession {
     return [...ENGINE_PROFILES, ...this.customProfiles.values()];
   }
 
-  /** May this engine be selected now (custom engines need the Sound Studio capability)? */
+  /**
+   * May this engine be selected? Built-in engines always (a locked one is previewed in Demo);
+   * custom engines only with the Sound Studio capability.
+   */
   canSelect(id: string): boolean {
-    return canUseEngine(this.store.get().entitlements, { custom: isCustomId(id) });
+    if (!this.findProfile(id)) return false;
+    return !isCustomId(id) || canUseEngine(this.store.get().entitlements, this.requirement(id));
+  }
+
+  /** What an engine needs (catalog tier / pack; custom engines: Studio + the borrowed sound). */
+  requirement(id: string): EngineRequirement {
+    if (isCustomId(id)) {
+      const spec = this.store?.get().customEngines.find((c) => c.id === id) ?? this.customSpecs.get(id);
+      const bank = spec?.sound.kind === 'bank' ? getCatalogEntry(spec.sound.bankId) : undefined;
+      return { custom: true, tier: 'free', packId: null, borrows: bank ? { tier: bank.tier, packId: bank.packId } : null };
+    }
+    const meta = getCatalogEntry(id);
+    return meta ? { custom: false, tier: meta.tier, packId: meta.packId } : FREE_ENGINE;
+  }
+
+  /** Why this engine cannot be driven on a GPS drive now, or null. */
+  engineLock(id: string): EngineLock {
+    return engineLock(this.store.get().entitlements, this.requirement(id));
   }
 
   audioDebug(): AudioDebugInfo {
@@ -219,6 +256,10 @@ export class EngineSession {
       return;
     }
     this.store.set({ ignition: 'starting', audioStatus: 'loading' });
+    const target = this.targetEngine();
+    this.profile = target.profile;
+    this.store.set({ activeEngine: target.eff });
+    ++this.profileToken; // a pending engine switch must not override this start
     this.markUsed(this.profile.id);
     this.tracker.startCycle();
     this.saveStats(true);
@@ -255,20 +296,60 @@ export class EngineSession {
 
   // --- Profiles --------------------------------------------------------------
 
+  /** Selects an engine. A locked built-in engine is selected too: Demo plays it, GPS uses the fallback. */
   async selectProfile(id: string): Promise<void> {
-    const profile = this.findProfile(id);
     if (this.store.get().preview) this.stopPreview(true);
-    if (!profile || profile.id === this.profile.id || !this.canSelect(id)) return;
-    await this.activate(profile);
+    if (!this.canSelect(id)) return;
+    if (this.store.get().profileId !== id) {
+      this.store.set({ profileId: id });
+      this.persist();
+      this.markUsed(id);
+    }
+    await this.applyEngine();
+  }
+
+  /** Try before you buy: select the engine and drive it in Demo (call from a tap). */
+  async tryInDemo(id: string): Promise<void> {
+    if (!this.canSelect(id)) return;
+    this.stopPreview(false);
+    if (this.store.get().profileId !== id) {
+      this.store.set({ profileId: id });
+      this.persist();
+      this.markUsed(id);
+    }
+    await this.startDemo();
+  }
+
+  private selectDefault(): void {
+    this.store.set({ profileId: DEFAULT_PROFILE_ID });
+    this.persist();
+    void this.applyEngine();
+  }
+
+  /** Last engine the user may drive (newest first), else the default engine. */
+  private fallbackId(e: Entitlements, recent: readonly string[]): string {
+    return recent.find((id) => this.findProfile(id) && canUseEngine(e, this.requirement(id))) ?? DEFAULT_PROFILE_ID;
+  }
+
+  /** Engine that should run now (selection + entitlements + mode). */
+  private targetEngine(): { eff: SessionState['activeEngine']; profile: EngineProfile } {
+    const st = this.store.get();
+    const selected = this.findProfile(st.profileId) ? st.profileId : DEFAULT_PROFILE_ID;
+    const eff = effectiveEngine(st.entitlements, { id: selected, requirement: this.requirement(selected) }, st.mode, this.fallbackId(st.entitlements, st.recentEngines));
+    return { eff, profile: this.findProfile(eff.id) ?? defaultProfile() };
+  }
+
+  /** Switches the running engine if the selection, plan or mode changed what may run. */
+  private async applyEngine(): Promise<void> {
+    const { eff, profile } = this.targetEngine();
+    const cur = this.store.get().activeEngine;
+    if (cur.id !== eff.id || cur.locked !== eff.locked || cur.preview !== eff.preview) this.store.set({ activeEngine: eff });
+    if (profile.id !== this.profile.id) await this.activate(profile);
   }
 
   /** Makes `profile` the running engine (also used to hot-apply an edited custom engine). */
   private async activate(profile: EngineProfile): Promise<void> {
-    const id = profile.id;
     this.profile = profile;
-    this.store.set({ profileId: id });
-    this.persist();
-    this.markUsed(id);
     const token = ++this.profileToken;
     if (this.store.get().ignition === 'on') {
       this.store.set({ audioStatus: 'loading' });
@@ -450,14 +531,14 @@ export class EngineSession {
     this.store.set({ userProfile: USER_PROFILE_SCHEMA.defaults() });
     this.rebuildCustomProfiles([]);
     this.store.set({ customEngines: [] });
-    if (isCustomId(this.profile.id)) void this.activate(getProfile(DEFAULT_PROFILE_ID) ?? (ENGINE_PROFILES[0] as EngineProfile));
     const d = DEFAULT_SETTINGS;
     const locale = browserLanguage();
     this.store.set({
       volume: d.volume, units: d.units, demoScenarioId: d.demoScenarioId, demoNoise: d.demoNoise,
       demoNoCoordsSpeed: d.demoNoCoordsSpeed, gearing: d.gearing, shiftStyle: d.shiftStyle, transmission: d.transmission, theme: d.theme,
-      language: null, locale, scrollTrap: false, planOverride: 'auto',
+      language: null, locale, scrollTrap: false, planOverride: 'auto', simulatedPacks: [],
     });
+    if (isCustomId(this.store.get().profileId)) this.store.set({ profileId: DEFAULT_PROFILE_ID });
     this.audio.setVolume(d.volume);
     applyTheme(d.theme);
     applyLanguage(locale);
@@ -495,9 +576,21 @@ export class EngineSession {
   setPlanOverride(planOverride: PlanOverride): void {
     this.store.set({ planOverride });
     this.saveDevOptions();
+    this.afterEntitlementChange();
+  }
+
+  /** Developer Mode: simulate owning a premium pack (clearly a simulation — nothing is bought). */
+  setSimulatedPack(packId: string, owned: boolean): void {
+    const cur = this.store.get().simulatedPacks.filter((p) => p !== packId);
+    this.store.set({ simulatedPacks: owned ? [...cur, packId] : cur });
+    this.saveDevOptions();
+    this.afterEntitlementChange();
+  }
+
+  private afterEntitlementChange(): void {
     this.applyDrive();
-    // A custom engine that is no longer allowed is kept, but the default engine takes over.
-    if (!this.canSelect(this.profile.id)) void this.activate(getProfile(DEFAULT_PROFILE_ID) ?? (ENGINE_PROFILES[0] as EngineProfile));
+    // A custom engine that is no longer allowed is kept in the Garage, but the default engine is selected.
+    if (!this.canSelect(this.store.get().profileId)) this.selectDefault();
   }
 
   // --- Sound Studio ------------------------------------------------------------------
@@ -509,6 +602,7 @@ export class EngineSession {
   async saveCustomEngine(spec: CustomEngineSpec): Promise<SaveCustomResult> {
     const st = this.store.get();
     if (!canCreateCustomProfile(st.entitlements)) return 'locked';
+    if (spec.sound.kind === 'bank' && this.engineLock(spec.sound.bankId) !== null) return 'locked';
     if (validateSpec(spec, new Set(ENGINE_PROFILES.filter((p) => p.audio.converted).map((p) => p.id))).length) return 'invalid';
     const exists = st.customEngines.some((c) => c.id === spec.id);
     if (!exists && st.customEngines.length >= MAX_CUSTOM_ENGINES) return 'full';
@@ -538,7 +632,8 @@ export class EngineSession {
     this.store.set({ customEngines, favorites, recentEngines });
     this.storage.save(FAVORITES_SCHEMA, favorites);
     this.storage.save(RECENT_SCHEMA, recentEngines);
-    if (this.profile.id === id) void this.activate(getProfile(DEFAULT_PROFILE_ID) ?? (ENGINE_PROFILES[0] as EngineProfile));
+    if (st.profileId === id) this.selectDefault();
+    else void this.applyEngine();
   }
 
   private customProfile(spec: CustomEngineSpec): EngineProfile {
@@ -546,6 +641,7 @@ export class EngineSession {
   }
 
   private rebuildCustomProfiles(list: readonly CustomEngineSpec[]): void {
+    this.customSpecs = new Map(list.map((c) => [c.id, c]));
     this.customProfiles = new Map(list.map((c) => [c.id, this.customProfile(c)]));
   }
 
@@ -557,7 +653,7 @@ export class EngineSession {
 
   private saveDevOptions(): void {
     const st = this.store.get();
-    this.storage.save(DEV_OPTIONS_SCHEMA, { scrollTrap: st.scrollTrap, plan: st.planOverride });
+    this.storage.save(DEV_OPTIONS_SCHEMA, { scrollTrap: st.scrollTrap, plan: st.planOverride, packs: [...st.simulatedPacks] });
   }
 
   private feedback(outcome: ShiftOutcome): ShiftOutcome {
@@ -572,7 +668,7 @@ export class EngineSession {
    */
   private applyDrive(): void {
     const st = this.store.get();
-    const entitlements = resolveEntitlements(st.planOverride);
+    const entitlements = resolveEntitlements(st.planOverride, PRODUCT.earlyAccess, st.simulatedPacks);
     const activeDrive = effectiveDriveProfile(entitlements, st.shiftStyle, st.mode);
     const activeTransmission: Transmission = st.transmission === 'manual' && canUseManual(entitlements, st.mode) ? 'manual' : 'auto';
     const drive = getDriveProfile(activeDrive.id);
@@ -582,6 +678,7 @@ export class EngineSession {
     this.drivetrain.setTransmission(activeTransmission);
     this.audio.setDriveTuning(drive);
     this.audio.setProfile(this.geared(this.profile));
+    void this.applyEngine();
   }
 
   /** On-screen REV pedal held / released. */
@@ -589,10 +686,12 @@ export class EngineSession {
     this.drivetrain.setRevPedal(down && this.store.get().ignition === 'on');
   }
 
+  /** Profile as it runs: virtual gearing, Drive Profile and (FREE on GPS) the basic sound model. */
   private geared(p: EngineProfile): EngineProfile {
     const st = this.store?.get();
     const id = st ? st.activeDrive.id : 'sport';
-    return applyDriveProfile(withGearing(p, st ? st.gearing : 'normal'), getDriveProfile(id));
+    const out = applyDriveProfile(withGearing(p, st ? st.gearing : 'normal'), getDriveProfile(id));
+    return st && !canUseAdvancedOverrun(st.entitlements, st.mode) ? basicSoundModel(out) : out;
   }
 
   // --- Internals -------------------------------------------------------------
@@ -743,6 +842,10 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   demoScenarioId: DEMO_SCENARIOS[0]?.id ?? 'full-cycle', demoNoise: false, demoNoCoordsSpeed: false,
   gearing: 'normal', shiftStyle: 'sport', transmission: 'auto', theme: 'dark', language: null,
 };
+
+function defaultProfile(): EngineProfile {
+  return getProfile(DEFAULT_PROFILE_ID) ?? (ENGINE_PROFILES[0] as EngineProfile);
+}
 
 function browserLanguage(): Language {
   if (typeof navigator === 'undefined') return 'en';

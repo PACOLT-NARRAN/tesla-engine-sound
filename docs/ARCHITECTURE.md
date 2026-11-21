@@ -127,3 +127,10 @@ items), `api.ts` (the `MarketplaceApi` boundary, `MockMarketplaceApi`, search) a
 (install / update / lock rules, local favorites and ratings, publication checks). Installing
 saves the engine as a Sound Studio engine (`custom-cm…`), so the Garage and the drivetrain need
 no new code. See `docs/COMMUNITY.md`.
+
+## Backend proposal (Phase 10, not implemented)
+
+There is still no server. `docs/BACKEND.md` compares Supabase, Firebase and Azure and recommends
+Supabase (EU) + Stripe + a separate FFmpeg worker. It plugs into the three existing seams:
+`resolveEntitlements()`, `RecordingBackend` (`src/recording/contracts.ts`) and `MarketplaceApi`
+(`src/community/api.ts`). Nothing is built without approval.

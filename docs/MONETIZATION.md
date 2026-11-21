@@ -45,4 +45,5 @@ One rule everywhere: **everything locked can be tried for free — the lock appl
 Developer Mode (`?debug=1`): plan AUTO / FREE / PRO and "Simulate owned packs" (saved in
 `revline.developer.v1`, schema v3). The store shows "Developer simulation" whenever it is active.
 These are local flags: they are **not payment security**, and editing localStorage changes what the
-UI unlocks. Real ownership must come from a server (Phase 10).
+UI unlocks. Real ownership must come from a server: see `docs/BACKEND.md` (sections 10–11) for the
+proposed Stripe webhook, server entitlements and protected paid audio.

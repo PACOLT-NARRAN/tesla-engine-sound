@@ -59,3 +59,8 @@ The prototype is free for everyone. A future paid version would be decided by th
 - `src/recording/contracts.ts`
 - `src/components/RecordingLab.tsx`, entry in `SoundStudio.tsx`
 - texts `rec.*` in `src/i18n/en.ts` and `cs.ts`; styles in the Phase 8 section of `cockpit.css`
+
+## Server processing (proposal)
+
+The upload → worker → Garage pipeline (FFmpeg, Opus loops, loudness, retention) is proposed in
+`docs/BACKEND.md`, section 8. Not implemented.

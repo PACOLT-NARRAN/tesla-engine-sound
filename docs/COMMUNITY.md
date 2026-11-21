@@ -69,4 +69,5 @@ A live Marketplace implements `MarketplaceApi`. It needs:
 - entitlement checks and download authorisation;
 - purchase history.
 
-The backend decides all of these, never the frontend.
+The backend decides all of these, never the frontend. The concrete proposal (tables, moderation,
+takedown, versioning) is in `docs/BACKEND.md`, section 9.

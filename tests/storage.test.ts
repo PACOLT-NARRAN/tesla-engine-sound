@@ -5,7 +5,7 @@ import { FAVORITES_SCHEMA, RECENT_SCHEMA } from '../src/storage/engineLists.ts';
 import { LocalStore, createMemoryBackend, type KeyValueBackend } from '../src/storage/storage.ts';
 
 const DEFAULTS: Settings = {
-  profileId: 'gt3flat6', volume: 0.8, volumeBoost: false, bassBoost: 0, units: 'kmh', demoScenarioId: 'full-cycle', demoNoise: false,
+  profileId: 'gt3flat6', volume: 0.8, volumeBoost: false, bassBoost: 0, treble: 0, stereoWidth: 0, units: 'kmh', demoScenarioId: 'full-cycle', demoNoise: false,
   demoNoCoordsSpeed: false, gearing: 'normal', shiftStyle: 'sport', transmission: 'auto', theme: 'dark', language: null,
 };
 const schema = settingsSchema(DEFAULTS);
@@ -21,7 +21,7 @@ test('legacy (pre-versioning) settings object is migrated without losing values'
   const r = new LocalStore(createMemoryBackend({ 'revline.settings.v1': JSON.stringify(legacy) })).load(schema);
   assert.equal(r.outcome, 'migrated');
   assert.equal(r.storedVersion, 1);
-  assert.deepEqual(r.value, { ...legacy, language: null, transmission: 'auto', volumeBoost: false, bassBoost: 0 });
+  assert.deepEqual(r.value, { ...legacy, language: null, transmission: 'auto', volumeBoost: false, bassBoost: 0, treble: 0, stereoWidth: 0 });
 });
 
 test('saved settings round-trip in a versioned envelope', () => {

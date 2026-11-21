@@ -169,3 +169,20 @@ engine level → volume → low shelf 110 Hz (bass) → peak 55 Hz (bass) → dr
   up to +12 dB shelf and +6 dB sub peak). Missing fields in older stored settings get the defaults
   (off / 0), so the settings schema version did not change.
 - The car's own media volume still sets the speaker level; music and REVLINE share it.
+
+### Sound quality, treble and stereo width (21 November 2026)
+
+- **Source quality is the limit.** The engine banks in `public/audio` are 508 mono 16-bit WAV files:
+  338 at 32 kHz (+ ~92 at 32.001–32.007 kHz), 69 at 48 kHz, 8 at 24 kHz, 1 at 44.1 kHz. A 32 kHz file
+  holds sound only up to 16 kHz. The Web Audio graph itself works in 32-bit float at the car's
+  output rate (48 kHz in the Tesla), so it adds no loss; upsampling cannot add detail that is not
+  recorded. Better sound needs better recordings (48 kHz, ideally stereo) — see the recording TODO.
+- **Treble** (`treble` 0..1): opens the load-dependent tone low-pass up to ×2 (max 15.5 kHz) and a
+  +6 dB high shelf at 3.5 kHz.
+- **Stereo width** (`stereoWidth` 0..1): mid/side from the mono signal — side = 13 ms delayed,
+  280 Hz high-passed copy, ±0.6 at full width. L + R sums back to mono (no cancellation); bass
+  below ~280 Hz stays mono for the subwoofer. Measured: side −9.7 dB under mid at full width,
+  peaks < 0.9.
+- **Subwoofer and front/rear:** a web page outputs two channels only; the car's own crossover sends
+  the low end to the subwoofer. Front/rear balance and the subwoofer level are set in the car
+  (Controls → Audio → Balance / Tone). The app says so in Settings.

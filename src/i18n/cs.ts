@@ -703,4 +703,7 @@ export const cs: Record<MessageKey, string> = {
   'sound.on': 'ZAP',
   'sound.bass': 'Basy (bass boost)',
   'sound.hint': 'Zvuk motoru je teď výrazně hlasitější, aby byl slyšet i vedle hudby. Volume boost přidá ještě víc (zvuk je hutnější a hlasitější i v nízkých otáčkách). Basy zesílí hluboké dunění výfuku. Celkovou hlasitost reproduktorů dál ovládá Tesla.',
+  'sound.treble': 'Výšky (jas zvuku)',
+  'sound.width': 'Prostorovost (stereo)',
+  'sound.teslaHint': 'Výšky zvuk zjasní a otevřou. Prostorovost rozprostře zvuk do šířky kabiny; nejhlubší basy zůstávají uprostřed pro subwoofer. Rozložení vpředu / vzadu a ekvalizér se subwooferem nastavíš v Tesle: Ovládání → Audio (Balance a Tón). Webová stránka posílá jen dva kanály (levý a pravý), takže přední a zadní reproduktory řídit nemůže.',
 };

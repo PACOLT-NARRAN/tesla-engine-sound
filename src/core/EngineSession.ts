@@ -197,7 +197,7 @@ export class EngineSession {
     this.telemetry = { motion: this.estimator.sample(Date.now()), drivetrain: this.drivetrain.state, frame: 0, lastShift: null };
 
     this.audio.setVolume(settings.volume);
-    this.audio.setSoundBoost({ volumeBoost: settings.volumeBoost, bassBoost: settings.bassBoost });
+    this.audio.setSoundBoost({ volumeBoost: settings.volumeBoost, bassBoost: settings.bassBoost, treble: settings.treble, width: settings.stereoWidth });
     // Preload the selected engine's sound before the driver presses START.
     if (typeof window !== 'undefined') void this.preload(this.profile);
     this.audio.onStateChange((s) => {
@@ -494,9 +494,25 @@ export class EngineSession {
 
   /** Bass boost slider 0..1 (Settings → Sound). */
   setBassBoost(v: number): void {
-    const bassBoost = Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
+    const bassBoost = unit(v);
     this.audio.setSoundBoost({ bassBoost });
     this.store.set({ bassBoost });
+    this.persist();
+  }
+
+  /** Treble / brightness slider 0..1 (Settings → Sound). */
+  setTreble(v: number): void {
+    const treble = unit(v);
+    this.audio.setSoundBoost({ treble });
+    this.store.set({ treble });
+    this.persist();
+  }
+
+  /** Stereo width slider 0..1 (Settings → Sound). */
+  setStereoWidth(v: number): void {
+    const stereoWidth = unit(v);
+    this.audio.setSoundBoost({ width: stereoWidth });
+    this.store.set({ stereoWidth });
     this.persist();
   }
 
@@ -573,13 +589,13 @@ export class EngineSession {
     const d = DEFAULT_SETTINGS;
     const locale = browserLanguage();
     this.store.set({
-      volume: d.volume, volumeBoost: d.volumeBoost, bassBoost: d.bassBoost, units: d.units, demoScenarioId: d.demoScenarioId, demoNoise: d.demoNoise,
+      volume: d.volume, volumeBoost: d.volumeBoost, bassBoost: d.bassBoost, treble: d.treble, stereoWidth: d.stereoWidth, units: d.units, demoScenarioId: d.demoScenarioId, demoNoise: d.demoNoise,
       demoNoCoordsSpeed: d.demoNoCoordsSpeed, gearing: d.gearing, shiftStyle: d.shiftStyle, transmission: d.transmission, theme: d.theme,
       language: null, locale, scrollTrap: false, planOverride: 'auto', simulatedPacks: [],
     });
     if (isCustomId(this.store.get().profileId)) this.store.set({ profileId: DEFAULT_PROFILE_ID });
     this.audio.setVolume(d.volume);
-    this.audio.setSoundBoost({ volumeBoost: d.volumeBoost, bassBoost: d.bassBoost });
+    this.audio.setSoundBoost({ volumeBoost: d.volumeBoost, bassBoost: d.bassBoost, treble: d.treble, width: d.stereoWidth });
     applyTheme(d.theme);
     applyLanguage(locale);
     this.applyDrive();
@@ -939,7 +955,7 @@ export class EngineSession {
   private persist(): void {
     const s = this.store.get();
     this.storage.save(this.settingsSchema, {
-      profileId: s.profileId, volume: s.volume, volumeBoost: s.volumeBoost, bassBoost: s.bassBoost, units: s.units,
+      profileId: s.profileId, volume: s.volume, volumeBoost: s.volumeBoost, bassBoost: s.bassBoost, treble: s.treble, stereoWidth: s.stereoWidth, units: s.units,
       demoScenarioId: s.demoScenarioId, demoNoise: s.demoNoise, demoNoCoordsSpeed: s.demoNoCoordsSpeed, gearing: s.gearing,
       shiftStyle: s.shiftStyle, transmission: s.transmission, theme: s.theme, language: s.language,
     });
@@ -959,8 +975,13 @@ export class EngineSession {
   }
 }
 
+/** Clamp a slider value to 0..1 (NaN → 0). */
+function unit(v: number): number {
+  return Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
+}
+
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
-  profileId: DEFAULT_PROFILE_ID, volume: 0.8, volumeBoost: false, bassBoost: 0, units: 'kmh',
+  profileId: DEFAULT_PROFILE_ID, volume: 0.8, volumeBoost: false, bassBoost: 0, treble: 0, stereoWidth: 0, units: 'kmh',
   demoScenarioId: DEMO_SCENARIOS[0]?.id ?? 'full-cycle', demoNoise: false, demoNoCoordsSpeed: false,
   gearing: 'normal', shiftStyle: 'sport', transmission: 'auto', theme: 'dark', language: null,
 };

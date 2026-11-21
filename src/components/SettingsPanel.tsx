@@ -93,7 +93,22 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             <output className="bass-value">{Math.round(s.bassBoost * 100)} %</output>
           </span>
         </div>
+        <div className="setting-row">
+          <span>{t('sound.treble')}</span>
+          <span className="bass-control">
+            <input type="range" min={0} max={1} step={0.05} value={s.treble} aria-label={t('sound.treble')} onChange={(e) => session.setTreble(Number(e.target.value))} data-testid="treble" />
+            <output className="bass-value">{Math.round(s.treble * 100)} %</output>
+          </span>
+        </div>
+        <div className="setting-row">
+          <span>{t('sound.width')}</span>
+          <span className="bass-control">
+            <input type="range" min={0} max={1} step={0.05} value={s.stereoWidth} aria-label={t('sound.width')} onChange={(e) => session.setStereoWidth(Number(e.target.value))} data-testid="stereo-width" />
+            <output className="bass-value">{Math.round(s.stereoWidth * 100)} %</output>
+          </span>
+        </div>
         <p className="setting-hint">{t('sound.hint')}</p>
+        <p className="setting-hint">{t('sound.teslaHint')}</p>
 
         <div className="setting-data">
           <h3>{t('settings.data')}</h3>

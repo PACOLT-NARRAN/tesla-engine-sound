@@ -11,6 +11,10 @@ export interface Settings {
   volumeBoost: boolean;
   /** Bass boost 0..1 (low shelf + sub-bass peak). */
   bassBoost: number;
+  /** Treble / brightness 0..1. */
+  treble: number;
+  /** Stereo width 0..1 (mono recordings spread across the cabin). */
+  stereoWidth: number;
   units: 'kmh' | 'mph';
   demoScenarioId: string;
   demoNoise: boolean;
@@ -70,6 +74,8 @@ export function settingsSchema(defaults: Settings): StoredSchema<Settings> {
         volume: pickNumber(o.volume, 0, 1, d.volume),
         volumeBoost: pickBool(o.volumeBoost, d.volumeBoost),
         bassBoost: pickNumber(o.bassBoost, 0, 1, d.bassBoost),
+        treble: pickNumber(o.treble, 0, 1, d.treble),
+        stereoWidth: pickNumber(o.stereoWidth, 0, 1, d.stereoWidth),
         units: pickEnum(o.units, ['kmh', 'mph'] as const, d.units),
         demoScenarioId: pickString(o.demoScenarioId, d.demoScenarioId, 64),
         demoNoise: pickBool(o.demoNoise, d.demoNoise),

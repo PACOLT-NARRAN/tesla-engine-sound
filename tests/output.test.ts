@@ -31,7 +31,7 @@ test('soft clipper never exceeds the ceiling and is symmetric', () => {
 
 test('settings keep volume boost and bass boost; old stored settings get the defaults', () => {
   const d: Settings = {
-    profileId: 'gt3flat6', volume: 0.8, volumeBoost: false, bassBoost: 0, units: 'kmh', demoScenarioId: 'full-cycle', demoNoise: false,
+    profileId: 'gt3flat6', volume: 0.8, volumeBoost: false, bassBoost: 0, treble: 0, stereoWidth: 0, units: 'kmh', demoScenarioId: 'full-cycle', demoNoise: false,
     demoNoCoordsSpeed: false, gearing: 'normal', shiftStyle: 'sport', transmission: 'auto', theme: 'dark', language: null,
   };
   const schema = settingsSchema(d);
@@ -44,4 +44,14 @@ test('settings keep volume boost and bass boost; old stored settings get the def
   const junk = new LocalStore(createMemoryBackend({ 'revline.settings.v1': JSON.stringify({ v: 3, data: { volumeBoost: 'yes', bassBoost: 9 } }) })).load(schema).value;
   assert.equal(junk.volumeBoost, false);
   assert.ok(junk.bassBoost >= 0 && junk.bassBoost <= 1);
+});
+
+test('treble and stereo width sliders map to shelf gain and side level; off by default', () => {
+  const off = outputGains({ volume: 1, boost: false, bass: 0 });
+  assert.equal(off.trebleDb, 0);
+  assert.equal(off.side, 0);
+  const full = outputGains({ volume: 1, boost: false, bass: 0, treble: 1, width: 1 });
+  assert.equal(full.trebleDb, OUTPUT_TUNING.trebleMaxDb);
+  assert.equal(full.side, OUTPUT_TUNING.widthMax);
+  assert.ok(OUTPUT_TUNING.widthHpfHz >= 200, 'bass stays mono for the subwoofer');
 });

@@ -61,6 +61,8 @@ export class EngineAudioEngine {
   private volume = 0.8;
   private volumeBoost = false;
   private bassBoost = 0;
+  private treble = 0;
+  private width = 0;
   private output: OutputStage | null = null;
   private readonly weights: number[] = [];
   private limiterToggle = 0;
@@ -131,15 +133,17 @@ export class EngineAudioEngine {
     this.output?.apply(this.outputSettings());
   }
 
-  /** VOLUME BOOST switch and bass boost slider (0..1). */
-  setSoundBoost(o: { volumeBoost?: boolean; bassBoost?: number }): void {
+  /** VOLUME BOOST switch and the bass / treble / stereo width sliders (0..1). */
+  setSoundBoost(o: { volumeBoost?: boolean; bassBoost?: number; treble?: number; width?: number }): void {
     if (o.volumeBoost !== undefined) this.volumeBoost = o.volumeBoost;
     if (o.bassBoost !== undefined) this.bassBoost = clamp(o.bassBoost, 0, 1);
+    if (o.treble !== undefined) this.treble = clamp(o.treble, 0, 1);
+    if (o.width !== undefined) this.width = clamp(o.width, 0, 1);
     this.output?.apply(this.outputSettings());
   }
 
   private outputSettings() {
-    return { volume: this.volume, boost: this.volumeBoost, bass: this.bassBoost };
+    return { volume: this.volume, boost: this.volumeBoost, bass: this.bassBoost, treble: this.treble, width: this.width };
   }
 
   /** Start (or hot-swap to) the given bank. Swaps crossfade over ~0.35 s. */
@@ -214,7 +218,10 @@ export class EngineAudioEngine {
     const lg = loadGains(s.load, s.overrun);
     v.onBus.gain.setTargetAtTime(lg.on, now, TC_GAIN * 1.5 * k);
     v.offBus.gain.setTargetAtTime(lg.off * this.offLevel * clamp(p.audio.offLoad ?? 1, 0, 2), now, TC_GAIN * 1.5 * k);
-    this.tone.frequency.setTargetAtTime(toneCutoffHz(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun), now, TC_TONE * k);
+    // Treble opens the load-dependent tone filter up to twice as far (capped below 16 kHz, the
+    // upper limit of the 32 kHz source recordings).
+    const cutoff = Math.min(15500, toneCutoffHz(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun) * (1 + this.treble));
+    this.tone.frequency.setTargetAtTime(cutoff, now, TC_TONE * k);
     const level = s.running ? engineLevel(s.rpm, p.idleRPM, p.redlineRPM, s.load, s.overrun) * p.audio.volume : 0;
     if (Math.abs(level - this.lastLevel) > 0.003) {
       this.level.gain.setTargetAtTime(level, now, s.running ? 0.08 : 0.35);

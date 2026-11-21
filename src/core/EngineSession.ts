@@ -91,6 +91,8 @@ export interface SessionState extends Settings {
   community: CommunityLocal;
   /** Developer Mode: state the Community mock simulates (not persisted). */
   communityMock: MockMode;
+  /** NITRO button held (purge hiss + vapour jets; not persisted). */
+  nitro: boolean;
 }
 
 /** Result of adding Community engines to the Garage. */
@@ -183,7 +185,7 @@ export class EngineSession {
     this.loader = new SoundBankLoader(baseUrl);
     this.store = new Store<SessionState>({
       ...settings,
-      ignition: 'off', mode: 'gps', sourceStatus: { kind: 'idle' }, motionQuality: 'waiting',
+      ignition: 'off', mode: 'gps', sourceStatus: { kind: 'idle' }, motionQuality: 'waiting', nitro: false,
       audioStatus: 'idle', bankKind: null, audioIssue: null,
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
       favorites, recentEngines, locale, scrollTrap, preview: null,
@@ -307,7 +309,8 @@ export class EngineSession {
       if (this.store.get().preview) return; // a Garage preview took over the audio
       this.audio.stop();
     }, 700);
-    this.store.set({ ignition: 'off', audioStatus: 'ready', mode: 'gps', sourceStatus: { kind: 'idle' } });
+    this.audio.setNitro(false);
+    this.store.set({ ignition: 'off', audioStatus: 'ready', mode: 'gps', sourceStatus: { kind: 'idle' }, nitro: false });
     this.applyDrive();
   }
 
@@ -817,6 +820,14 @@ export class EngineSession {
     this.audio.setDriveTuning(drive);
     this.audio.setProfile(this.geared(this.profile));
     void this.applyEngine();
+  }
+
+  /** NITRO button held / released: gas purge hiss and vapour jets (cosmetic, engine unchanged). */
+  setNitro(down: boolean): void {
+    const on = down && this.store.get().ignition === 'on';
+    if (on === this.store.get().nitro) return;
+    this.audio.setNitro(on);
+    this.store.set({ nitro: on });
   }
 
   /** On-screen REV pedal held / released. */

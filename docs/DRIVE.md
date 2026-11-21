@@ -56,3 +56,12 @@ keep working.
    1. Accelerate. The engine must reach the limiter in gear until you press ▲.
    2. Press ▼ at speed until `OVER-REV` appears.
    3. Stop. The gear returns to 1.
+
+## Driver rail and NITRO (21 November 2026)
+
+- Rail order (left edge, top to bottom): **AUTO / MANUAL** switch, ▲, REV, ▼, **NITRO**.
+- NITRO (`NitroButton.tsx`) is cosmetic: hold it for a gas-purge hiss (`EngineAudioEngine.setNitro`,
+  high-passed noise with a 5 kHz peak, 17 Hz flutter and a low whoosh, through the output stage)
+  and vapour jets that burst sideways from behind the tachometer (`NitroPurge`, CSS animation).
+  It does not change RPM, gears or speed. `SessionState.nitro` is not persisted; it is released
+  on pointer up / cancel, window blur, tab hide and ignition off.

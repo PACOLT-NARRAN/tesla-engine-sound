@@ -7,6 +7,7 @@ import { DeveloperPanel } from '../components/DeveloperPanel.tsx';
 import { Garage } from '../components/Garage.tsx';
 import { GearIndicator } from '../components/GearIndicator.tsx';
 import { LoadMeters } from '../components/LoadMeters.tsx';
+import { NitroPurge } from '../components/NitroButton.tsx';
 import { Notices } from '../components/Notices.tsx';
 import { ProfilePanel } from '../components/ProfilePanel.tsx';
 import { ShiftPaddles } from '../components/ShiftPaddles.tsx';
@@ -55,6 +56,7 @@ export function CockpitPage() {
           <GearIndicator />
         </section>
         <section className="cluster-center">
+          <NitroPurge />
           <Tachometer profile={profile} units={s.units} />
         </section>
         <section className="cluster-right">

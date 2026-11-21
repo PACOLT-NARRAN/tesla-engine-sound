@@ -48,6 +48,10 @@ export interface AudioDebugInfo {
  *         -> shift duck -> limiter -> engine level -> output stage (volume, bass boost, drive,
  *            compressor, limiter, soft clip; see outputStage.ts) -> out
  */
+/** NITRO purge hiss levels (before the output stage). */
+const NITRO_BURST = 0.5;
+const NITRO_LEVEL = 0.32;
+
 export class EngineAudioEngine {
   private ctx: AudioContext | null = null;
   private tone!: BiquadFilterNode;
@@ -75,6 +79,7 @@ export class EngineAudioEngine {
   private turboOsc2!: OscillatorNode;
   private turboNoise!: BiquadFilterNode;
   private boost = 0;
+  private nitroGain!: GainNode;
   private scGain!: GainNode;
   private scOsc!: OscillatorNode;
   private scFilter!: BiquadFilterNode;
@@ -173,7 +178,22 @@ export class EngineAudioEngine {
     if (b) this.playOneShot(b, 0.6);
   }
 
+  /** NITRO button held / released: the gas purge hiss bursts in and tails off. */
+  setNitro(on: boolean): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.nitroGain.gain.cancelScheduledValues(now);
+    if (on) {
+      // A sharp burst, then a steady hiss.
+      this.nitroGain.gain.setTargetAtTime(NITRO_BURST, now, 0.012);
+      this.nitroGain.gain.setTargetAtTime(NITRO_LEVEL, now + 0.12, 0.15);
+    } else {
+      this.nitroGain.gain.setTargetAtTime(0, now, 0.16);
+    }
+  }
+
   stop(): void {
+    if (this.ctx) this.nitroGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
     if (!this.ctx || !this.voice) return;
     this.boost = 0;
     this.turboGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
@@ -309,6 +329,26 @@ export class EngineAudioEngine {
     this.turboOsc.start();
     this.turboOsc2.start();
     noise.start();
+
+    // NITRO purge: a loud, airy hiss of escaping gas (high-passed noise with a bright peak and a
+    // fast flutter), plus a low whoosh. Silent until the NITRO button is held.
+    this.nitroGain = new GainNode(ctx, { gain: 0 });
+    const purge = new AudioBufferSourceNode(ctx, { buffer: noiseBuf, loop: true, loopStart: 0.37, loopEnd: 1.93 });
+    const purgeHp = new BiquadFilterNode(ctx, { type: 'highpass', frequency: 1100, Q: 0.5 });
+    const purgePeak = new BiquadFilterNode(ctx, { type: 'peaking', frequency: 5200, Q: 0.9, gain: 7 });
+    const purgeLp = new BiquadFilterNode(ctx, { type: 'lowpass', frequency: 12500, Q: 0.5 });
+    const whoosh = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 420, Q: 1.2 });
+    const whooshGain = new GainNode(ctx, { gain: 0.5 });
+    const flutter = new OscillatorNode(ctx, { type: 'sine', frequency: 17 });
+    const flutterDepth = new GainNode(ctx, { gain: 0.18 });
+    // Flutter modulates a unity gain AFTER the noise and BEFORE the on/off gain, so silence stays silent.
+    const flutterAmp = new GainNode(ctx, { gain: 1 });
+    purge.connect(purgeHp).connect(purgePeak).connect(purgeLp).connect(flutterAmp);
+    purge.connect(whoosh).connect(whooshGain).connect(flutterAmp);
+    flutter.connect(flutterDepth).connect(flutterAmp.gain);
+    flutterAmp.connect(this.nitroGain).connect(this.master);
+    purge.start();
+    flutter.start();
 
     // Supercharger whine (Sound Studio engines): a belt-driven tone locked to engine RPM.
     this.scGain = new GainNode(ctx, { gain: 0 });

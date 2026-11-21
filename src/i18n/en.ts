@@ -717,6 +717,7 @@ export const en = {
   'sound.treble': 'Treble (brightness)',
   'sound.width': 'Stereo width',
   'sound.teslaHint': 'Treble makes the sound brighter and more open. Stereo width spreads it across the cabin; the deepest bass stays centred for the subwoofer. Front / rear balance and the equalizer with the subwoofer are set in the car: Controls → Audio (Balance and Tone). A web page only sends two channels (left and right), so it cannot steer front and rear speakers.',
+  'hud.nitroAria': 'Nitro (hold): gas purge hiss and vapour',
 } as const;
 
 export type MessageKey = keyof typeof en;

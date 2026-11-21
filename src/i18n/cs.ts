@@ -706,4 +706,5 @@ export const cs: Record<MessageKey, string> = {
   'sound.treble': 'Výšky (jas zvuku)',
   'sound.width': 'Prostorovost (stereo)',
   'sound.teslaHint': 'Výšky zvuk zjasní a otevřou. Prostorovost rozprostře zvuk do šířky kabiny; nejhlubší basy zůstávají uprostřed pro subwoofer. Rozložení vpředu / vzadu a ekvalizér se subwooferem nastavíš v Tesle: Ovládání → Audio (Balance a Tón). Webová stránka posílá jen dva kanály (levý a pravý), takže přední a zadní reproduktory řídit nemůže.',
+  'hud.nitroAria': 'Nitro (držet): syčení plynu a pára',
 };

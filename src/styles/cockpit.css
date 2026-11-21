@@ -1056,3 +1056,91 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 .bass-value { min-width: 52px; text-align: right; font-family: var(--font-num); font-weight: 800; color: var(--muted); }
 [data-theme='light'] .vol-boost { background: #ffffff; }
 [data-theme='light'] .vol-boost[aria-pressed='true'] { color: #fff; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+
+/* ---------- Driver rail: AUTO/MANUAL on top, NITRO at the bottom ---------- */
+.driver-rail.paddles { grid-template-rows: auto minmax(52px, 1fr) minmax(88px, 1.4fr) minmax(52px, 1fr) auto; }
+.driver-rail .paddle-mode { min-height: 44px; font-size: clamp(13px, 1.25vw, 17px); letter-spacing: 0.06em; }
+.nitro-btn {
+  position: relative; overflow: hidden; min-height: clamp(58px, 9dvh, 84px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 14px; border: 2px solid #ff2a14; color: #fff;
+  background:
+    repeating-linear-gradient(-45deg, rgba(0,0,0,0.28) 0 7px, transparent 7px 14px),
+    radial-gradient(120% 90% at 50% 20%, #ff5a3c 0%, #d3140a 55%, #6d0602 100%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.28), inset 0 -6px 14px rgba(0,0,0,0.45), 0 0 18px rgba(255,40,20,0.45);
+  touch-action: none; transition: transform 80ms, box-shadow 120ms, opacity 200ms;
+}
+.nitro-btn::before {
+  /* hazard edge */
+  content: ''; position: absolute; inset: 0; border-radius: 12px; pointer-events: none;
+  box-shadow: inset 0 0 0 3px rgba(255,210,40,0.0);
+  background: repeating-linear-gradient(45deg, #ffd21f 0 6px, #111 6px 12px) top / 100% 5px no-repeat,
+              repeating-linear-gradient(45deg, #ffd21f 0 6px, #111 6px 12px) bottom / 100% 5px no-repeat;
+  opacity: 0.85;
+}
+.nitro-label {
+  font-family: var(--font-num); font-weight: 900; font-style: italic; font-size: clamp(17px, 1.9vw, 26px);
+  letter-spacing: 0.08em; text-shadow: 0 0 10px rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.5);
+}
+.nitro-btn small { font-size: 9px; letter-spacing: 0.3em; font-weight: 800; color: rgba(255,255,255,0.8); }
+.nitro-btn:disabled { opacity: 0.35; }
+.nitro-btn:not(:disabled) { animation: nitroIdle 2.2s ease-in-out infinite; }
+.nitro-btn[data-held='true'] {
+  transform: scale(0.95);
+  border-color: #9fe8ff;
+  box-shadow: 0 0 0 3px rgba(159,232,255,0.8), 0 0 40px rgba(120,220,255,0.9), inset 0 0 22px rgba(255,255,255,0.45);
+  animation: nitroShake 70ms linear infinite;
+}
+@keyframes nitroIdle { 50% { box-shadow: inset 0 2px 0 rgba(255,255,255,0.28), inset 0 -6px 14px rgba(0,0,0,0.45), 0 0 30px rgba(255,40,20,0.8); } }
+@keyframes nitroShake { 0% { transform: scale(0.95) translate(0, 0); } 33% { transform: scale(0.95) translate(1px, -1px); } 66% { transform: scale(0.95) translate(-1px, 1px); } }
+
+/* Vapour jets from behind the tachometer */
+.cluster-center { position: relative; }
+.cluster-center .tach { z-index: 3; }
+.nitro-purge {
+  /* outer edge of the tach ring: half of .tach width × 0.9 */
+  --nitro-edge: min(29dvh, 20.7vw);
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  opacity: 0; transition: opacity 520ms ease-out;
+}
+.nitro-purge[data-on='true'] { opacity: 1; transition: opacity 60ms; }
+.nitro-jet { position: absolute; top: 0; bottom: 0; width: 0; }
+.nitro-jet-left { left: 50%; }
+.nitro-jet-right { left: 50%; }
+.nitro-jet span {
+  position: absolute; left: 0; width: 22vmin; height: 22vmin; margin: -11vmin 0 0 -11vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(235,248,255,0.95) 0%, rgba(200,235,255,0.55) 35%, rgba(180,225,255,0) 70%);
+  filter: blur(4px);
+  animation: purgeLeft 0.62s linear infinite;
+  animation-play-state: paused;
+}
+.nitro-jet-right span { animation-name: purgeRight; }
+.nitro-purge[data-on='true'] .nitro-jet span { animation-play-state: running; }
+.nitro-core {
+  position: absolute; top: 47%; height: 7vmin; margin-top: -3.5vmin; width: 46vmin; border-radius: 50%;
+  background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(190,235,255,0.6) 40%, rgba(190,235,255,0));
+  filter: blur(6px);
+}
+.nitro-jet-left .nitro-core { right: var(--nitro-edge); background: linear-gradient(270deg, rgba(255,255,255,0.95), rgba(190,235,255,0.6) 40%, rgba(190,235,255,0)); }
+.nitro-jet-right .nitro-core { left: var(--nitro-edge); }
+.nitro-purge[data-on='true'] .nitro-core { animation: coreFlicker 90ms steps(2) infinite; }
+/* Puffs start at the tach edge (≈ 30vmin from its centre) and blast outward, growing and fading. */
+@keyframes purgeLeft {
+  0% { transform: translateX(calc(-1 * var(--nitro-edge))) scale(0.25); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateX(-78vmin) translateY(-6vmin) scale(2.6); opacity: 0; }
+}
+@keyframes purgeRight {
+  0% { transform: translateX(var(--nitro-edge)) scale(0.25); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateX(78vmin) translateY(-6vmin) scale(2.6); opacity: 0; }
+}
+@keyframes coreFlicker { 50% { opacity: 0.7; } }
+[data-theme='light'] .nitro-jet span { background: radial-gradient(circle, rgba(150,175,200,0.85) 0%, rgba(170,195,220,0.5) 35%, rgba(180,205,230,0) 70%); }
+[data-theme='light'] .nitro-core { opacity: 0.6; }
+@media (max-aspect-ratio: 4/3) { .nitro-purge { --nitro-edge: min(20.7dvh, 39.6vw); } }
+@media (prefers-reduced-motion: reduce) {
+  .nitro-jet span { animation: none; opacity: 0.6; transform: translateX(0) scale(1.4); }
+  .nitro-btn, .nitro-btn[data-held='true'] { animation: none; }
+}

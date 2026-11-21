@@ -74,6 +74,21 @@ test('clipping needs consecutive full-scale samples; a single 0 dBFS peak is not
   assert.ok(isUsable(assess(a)), 'clipping is a warning, not an error');
 });
 
+test('overshoots past full scale (clipped lossy files) count as clipping; waveform marks match the measurement', () => {
+  const ch = sine(3, 0.5);
+  ch[1000] = 1.1; // a single decoded overshoot, as in a clipped MP3
+  const a = analyzeAudio(mono(ch));
+  assert.equal(a.clippedRuns, 1);
+  assert.ok(a.peakDb > 0);
+  assert.deepEqual(codes(mono(ch)), ['clipping']);
+  const single = sine(3, 0.5);
+  single[1000] = 1; // exactly full scale once: fine, and not red
+  assert.equal(analyzeAudio(mono(single)).clippedRuns, 0);
+  assert.equal([...computeWaveform(mono(single), 50).clipped].some(Boolean), false);
+  const w = computeWaveform(mono(ch), 50);
+  assert.equal([...w.clipped].filter(Boolean).length, 1);
+});
+
 test('silence detection: ratio, leading and trailing silence', () => {
   const ch = concat(new Float32Array(2 * SR), sine(2, 0.4), new Float32Array(1 * SR));
   const a = analyzeAudio(mono(ch));

@@ -95,7 +95,7 @@ export function RecordingLab({ onClose }: { onClose: () => void }) {
     if (rec) audio.setGainDb(next ? rec.analysis.normalizeGainDb : 0);
   };
 
-  const db = (v: number) => (Number.isFinite(v) ? `${t.num(v, 1, 1)} dBFS` : '−∞ dBFS');
+  const db = (v: number) => (Number.isFinite(v) ? `${v > 0.05 ? '+' : ''}${t.num(v, 1, 1)} dBFS` : '−∞ dBFS');
   const mb = (bytes: number) => `${t.num(bytes / (1024 * 1024), 1, 1)} MB`;
   const secs = (v: number) => t('rec.seconds', { s: t.num(v, 1, 1) });
   const busy = state.status === 'reading' || state.status === 'decoding';

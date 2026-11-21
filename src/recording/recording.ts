@@ -20,7 +20,11 @@ export const ACCEPT_ATTR = ['audio/*', ...SUPPORTED_EXTENSIONS.map((e) => `.${e}
 
 /** A sample at or above this absolute level counts as full scale. */
 export const CLIP_LEVEL = 0.999;
-/** This many consecutive full-scale samples count as one clipped run (a single 0 dBFS peak is fine). */
+/**
+ * A run of samples at or above CLIP_LEVEL is a clipping event when it is at least this long, or
+ * when any sample in it goes past full scale (> 1.0: a lossy file that was clipped before
+ * encoding decodes with overshoots). A single 0 dBFS peak is fine.
+ */
 export const CLIP_RUN = 3;
 /** Analysis frame for silence detection, seconds. */
 export const FRAME_S = 0.05;
@@ -114,17 +118,16 @@ export function analyzeAudio(a: DecodedAudio): RecordingAnalysis {
   let clippedSamples = 0;
   let clippedRuns = 0;
   for (const ch of channels) {
-    let run = 0;
     for (let i = 0; i < ch.length; i++) {
       const v = ch[i] as number;
       const abs = v < 0 ? -v : v;
       if (abs > peak) peak = abs;
       sumSq += v * v;
-      if (abs >= CLIP_LEVEL) {
-        run++;
-        if (run === CLIP_RUN) { clippedRuns++; clippedSamples += CLIP_RUN; } else if (run > CLIP_RUN) clippedSamples++;
-      } else run = 0;
     }
+    forEachClip(ch, (start, end) => {
+      clippedRuns++;
+      clippedSamples += end - start;
+    });
     count += ch.length;
   }
 
@@ -180,6 +183,23 @@ export interface Waveform {
   clipped: Uint8Array;
 }
 
+/** Calls `onClip(start, end)` (end exclusive) for every clipping event in one channel. */
+export function forEachClip(ch: Float32Array, onClip: (start: number, end: number) => void): void {
+  let start = -1;
+  let over = false;
+  for (let i = 0; i <= ch.length; i++) {
+    const v = i < ch.length ? (ch[i] as number) : 0;
+    const abs = v < 0 ? -v : v;
+    if (abs >= CLIP_LEVEL) {
+      if (start < 0) { start = i; over = false; }
+      if (abs > 1) over = true;
+    } else if (start >= 0) {
+      if (i - start >= CLIP_RUN || over) onClip(start, i);
+      start = -1;
+    }
+  }
+}
+
 /** Downsamples audio to `buckets` min/max pairs for drawing. One pass over the samples. */
 export function computeWaveform(a: DecodedAudio, buckets: number): Waveform {
   const n = Math.max(1, Math.floor(buckets));
@@ -194,18 +214,22 @@ export function computeWaveform(a: DecodedAudio, buckets: number): Waveform {
     const end = Math.max(start + 1, Math.floor((b + 1) * per));
     let lo = 0;
     let hi = 0;
-    let clip = 0;
     for (const ch of a.channels) {
       for (let i = start; i < end && i < ch.length; i++) {
         const v = ch[i] as number;
         if (v < lo) lo = v;
         if (v > hi) hi = v;
-        if (v >= CLIP_LEVEL || v <= -CLIP_LEVEL) clip = 1;
       }
     }
     min[b] = Math.max(-1, lo);
     max[b] = Math.min(1, hi);
-    clipped[b] = clip;
+  }
+  // Red marks use exactly the same rule as the clipping measurement.
+  for (const ch of a.channels) {
+    forEachClip(ch, (start, end) => {
+      const last = Math.min(n - 1, Math.floor((end - 1) / per));
+      for (let b = Math.min(n - 1, Math.floor(start / per)); b <= last; b++) clipped[b] = 1;
+    });
   }
   return { min, max, clipped };
 }

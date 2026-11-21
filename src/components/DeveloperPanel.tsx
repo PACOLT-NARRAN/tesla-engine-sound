@@ -36,6 +36,8 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
       drivetrain: { gear: d.gear, rpm: Math.round(d.rpm), throttle: d.throttle, load: d.load, manualOffset: d.manualOffset },
       audio: { context: a.contextState, sampleRate: a.sampleRate },
       storage,
+      // Totals only (no positions); see src/engagement/stats.ts.
+      statistics: { ...s.stats, achievements: Object.keys(s.achievements.unlocked) },
       profileIssues: PROFILE_ISSUES,
       input: { scrollTrap: s.scrollTrap, summary: inputDiagnostics.summary(), log: inputDiagnostics.toText().split('\n').slice(-60) },
     };
@@ -90,6 +92,9 @@ export function DeveloperPanel({ onClose }: { onClose: () => void }) {
             ))}
           </tbody>
         </table>
+        <h3>Statistics (local, raw)</h3>
+        <p className="sheet-hint">Saved every 15 s while driving, on milestones and on ENGINE OFF. Achievements: {Object.keys(s.achievements.unlocked).join(', ') || 'none'}.</p>
+        <pre className="dev-pre" data-testid="dev-stats">{JSON.stringify(s.stats, null, 1)}</pre>
         <h3>Profile load errors</h3>
         {PROFILE_ISSUES.length === 0 ? <p>None.</p> : PROFILE_ISSUES.map((i) => <p key={i.file}>{i.file}: {i.message}</p>)}
         <div className="data-actions">

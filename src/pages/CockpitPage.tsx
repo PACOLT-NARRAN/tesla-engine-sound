@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { ControlDock, type Panel } from '../components/ControlDock.tsx';
+import { AchievementToast } from '../components/AchievementToast.tsx';
 import { DebugOverlay } from '../components/DebugOverlay.tsx';
 import { DemoPanel } from '../components/DemoPanel.tsx';
 import { DeveloperPanel } from '../components/DeveloperPanel.tsx';
@@ -7,6 +8,7 @@ import { Garage } from '../components/Garage.tsx';
 import { GearIndicator } from '../components/GearIndicator.tsx';
 import { LoadMeters } from '../components/LoadMeters.tsx';
 import { Notices } from '../components/Notices.tsx';
+import { ProfilePanel } from '../components/ProfilePanel.tsx';
 import { RevPedal } from '../components/RevPedal.tsx';
 import { ShiftPaddles } from '../components/ShiftPaddles.tsx';
 import { SettingsPanel } from '../components/SettingsPanel.tsx';
@@ -55,9 +57,11 @@ export function CockpitPage() {
       <RevPedal />
       <ShiftPaddles />
       <Notices />
+      {panel === null && <AchievementToast />}
       <ControlDock onOpen={setPanel} profileName={name} developer={debug} />
       {panel === 'engines' && <Garage onClose={close} />}
       {panel === 'demo' && <DemoPanel onClose={close} />}
+      {panel === 'profile' && <ProfilePanel onClose={close} />}
       {panel === 'settings' && <SettingsPanel onClose={close} />}
       {debug && panel === 'developer' && <DeveloperPanel onClose={close} />}
       {debug && panel !== 'developer' && <DebugOverlay />}

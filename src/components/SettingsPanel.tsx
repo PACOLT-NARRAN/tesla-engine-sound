@@ -20,6 +20,7 @@ function Segmented<T extends string>({ value, options, onPick }: { value: T; opt
 const RESETS: readonly { scope: ResetScope; label: MessageKey }[] = [
   { scope: 'favorites', label: 'settings.resetFavorites' },
   { scope: 'recent', label: 'settings.resetRecent' },
+  { scope: 'stats', label: 'settings.resetStats' },
   { scope: 'all', label: 'settings.resetAll' },
 ];
 

@@ -98,3 +98,9 @@ Custom engines live in `src/studio/` and are documented in [STUDIO.md](STUDIO.md
 
 - The session joins built-in and custom engines through `findProfile()` / `allProfiles()`.
 - Nothing else in the drivetrain or the audio pipeline knows that an engine is custom.
+
+## Profile & Engagement
+
+`src/engagement/` holds pure domain services (statistics tracker, achievements, collections,
+challenges, share card). `EngineSession` feeds the tracker from its simulation tick and batches
+storage writes; `ProfilePanel` only displays the results. See `docs/ENGAGEMENT.md`.

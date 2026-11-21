@@ -22,6 +22,11 @@ import {
   CUSTOM_ENGINES_SCHEMA, MAX_CUSTOM_ENGINES, buildCustomProfile, isCustomId, upsertSpec, validateSpec, type CustomEngineSpec,
 } from '../studio/customEngine.ts';
 import { PREVIEW_SECONDS, revPedalAt } from './preview.ts';
+import { ENGINE_CATALOG } from '../profiles/catalog.ts';
+import { layoutGroup } from '../garage/garage.ts';
+import { STATISTICS_SCHEMA, StatsTracker, dayKey, emptyStatistics, type Statistics } from '../engagement/stats.ts';
+import { ACHIEVEMENTS_SCHEMA, awardAchievements, type AchievementId, type AchievementState, type EngagementContext } from '../engagement/achievements.ts';
+import { USER_PROFILE_SCHEMA, cleanText, type UserProfile } from '../engagement/profileCard.ts';
 import { Store } from './Store.ts';
 
 export type IgnitionState = 'off' | 'starting' | 'on';
@@ -56,6 +61,12 @@ export interface SessionState extends Settings {
   activeTransmission: Transmission;
   /** Sound Studio engines saved in this browser. */
   customEngines: readonly CustomEngineSpec[];
+  /** Local statistics (snapshot; refreshed when they are saved, not every tick). */
+  stats: Statistics;
+  achievements: AchievementState;
+  userProfile: UserProfile;
+  /** Achievements just awarded, shown briefly on the Drive screen. */
+  achievementToast: { ids: readonly AchievementId[]; at: number } | null;
 }
 
 /** Result of saving a Sound Studio engine. */
@@ -64,7 +75,10 @@ export type SaveCustomResult = 'saved' | 'locked' | 'invalid' | 'full';
 /** Preview id used for the unsaved engine open in the Sound Studio editor. */
 export const STUDIO_DRAFT_ID = 'studio-draft';
 
-export type ResetScope = 'favorites' | 'recent' | 'all';
+export type ResetScope = 'favorites' | 'recent' | 'stats' | 'all';
+
+/** Statistics are written at most this often while driving (plus on milestones and engine off). */
+const STATS_SAVE_MS = 15_000;
 
 /** High-frequency values, mutated in place every tick and read by the HUD via requestAnimationFrame. */
 export interface Telemetry {
@@ -99,6 +113,8 @@ export class EngineSession {
   private previewTimer: ReturnType<typeof setInterval> | null = null;
   private previewToken = 0;
   private customProfiles = new Map<string, EngineProfile>();
+  private readonly tracker: StatsTracker;
+  private lastStatsSave = 0;
 
   constructor(baseUrl: string, storage: LocalStore = new LocalStore()) {
     this.storage = storage;
@@ -107,6 +123,8 @@ export class EngineSession {
     if (!DEMO_SCENARIOS.some((d) => d.id === settings.demoScenarioId)) settings.demoScenarioId = DEFAULT_SETTINGS.demoScenarioId;
     applyTheme(settings.theme);
     const customEngines = storage.load(CUSTOM_ENGINES_SCHEMA).value;
+    const stats = storage.load(STATISTICS_SCHEMA).value;
+    this.tracker = new StatsTracker(structuredClone(stats));
     this.rebuildCustomProfiles(customEngines);
     const { scrollTrap, plan: planOverride } = storage.load(DEV_OPTIONS_SCHEMA).value;
     const entitlements = resolveEntitlements(planOverride);
@@ -134,7 +152,11 @@ export class EngineSession {
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
       favorites, recentEngines, locale, scrollTrap, preview: null,
       planOverride, entitlements, activeDrive, activeTransmission, customEngines,
+      stats: structuredClone(stats), achievements: storage.load(ACHIEVEMENTS_SCHEMA).value,
+      userProfile: storage.load(USER_PROFILE_SCHEMA).value, achievementToast: null,
     });
+    // Award anything already earned before this build (e.g. five favorites) — silently.
+    this.evaluateAchievements(false);
     this.telemetry = { motion: this.estimator.sample(Date.now()), drivetrain: this.drivetrain.state, frame: 0, lastShift: null };
 
     this.audio.setVolume(settings.volume);
@@ -148,8 +170,10 @@ export class EngineSession {
     window.addEventListener('online', () => this.store.set({ online: true }));
     window.addEventListener('offline', () => this.store.set({ online: false }));
     document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.saveStats(false);
       if (document.visibilityState === 'visible' && this.store.get().ignition === 'on') void this.audio.resume().catch(() => undefined);
     });
+    window.addEventListener('pagehide', () => this.saveStats(false));
 
   }
 
@@ -196,6 +220,8 @@ export class EngineSession {
     }
     this.store.set({ ignition: 'starting', audioStatus: 'loading' });
     this.markUsed(this.profile.id);
+    this.tracker.startCycle();
+    this.saveStats(true);
     const bank = await this.bankFor(this.profile);
     this.audio.start(bank, this.geared(this.profile), { ignition: true });
     this.drivetrain.setProfile(this.geared(this.profile));
@@ -206,6 +232,8 @@ export class EngineSession {
   }
 
   shutdown(): void {
+    this.tracker.endCycle();
+    this.saveStats(true);
     this.stopSource();
     this.drivetrain.shutdown();
     this.audio.playShutdown();
@@ -390,6 +418,7 @@ export class EngineSession {
     const favorites = toggleFavorite(this.store.get().favorites, id);
     this.store.set({ favorites });
     this.storage.save(FAVORITES_SCHEMA, favorites);
+    this.evaluateAchievements(true);
   }
 
   /**
@@ -405,8 +434,20 @@ export class EngineSession {
       this.storage.remove(RECENT_SCHEMA.key);
       this.store.set({ recentEngines: [] });
     }
+    if (scope === 'stats' || scope === 'all') {
+      this.storage.remove(STATISTICS_SCHEMA.key);
+      this.storage.remove(ACHIEVEMENTS_SCHEMA.key);
+      const fresh = emptyStatistics();
+      this.tracker.replace(fresh);
+      // A drive in progress keeps counting from zero (its START is not counted again).
+      this.store.set({ stats: structuredClone(fresh), achievements: { unlocked: {} }, achievementToast: null });
+    }
     if (scope !== 'all') return;
-    this.storage.clearAll([this.settingsSchema.key, FAVORITES_SCHEMA.key, RECENT_SCHEMA.key, DEV_OPTIONS_SCHEMA.key, CUSTOM_ENGINES_SCHEMA.key]);
+    this.storage.clearAll([
+      this.settingsSchema.key, FAVORITES_SCHEMA.key, RECENT_SCHEMA.key, DEV_OPTIONS_SCHEMA.key, CUSTOM_ENGINES_SCHEMA.key,
+      STATISTICS_SCHEMA.key, ACHIEVEMENTS_SCHEMA.key, USER_PROFILE_SCHEMA.key,
+    ]);
+    this.store.set({ userProfile: USER_PROFILE_SCHEMA.defaults() });
     this.rebuildCustomProfiles([]);
     this.store.set({ customEngines: [] });
     if (isCustomId(this.profile.id)) void this.activate(getProfile(DEFAULT_PROFILE_ID) ?? (ENGINE_PROFILES[0] as EngineProfile));
@@ -475,6 +516,10 @@ export class EngineSession {
     if (!this.storage.save(CUSTOM_ENGINES_SCHEMA, customEngines) && this.storage.available) return 'full';
     this.rebuildCustomProfiles(customEngines);
     this.store.set({ customEngines });
+    if (!exists) {
+      this.tracker.noteEngineCreated();
+      this.saveStats(true);
+    }
     const updated = this.customProfiles.get(spec.id);
     if (updated && this.profile.id === spec.id) await this.activate(updated);
     return 'saved';
@@ -601,6 +646,55 @@ export class EngineSession {
     this.telemetry.drivetrain = this.drivetrain.state;
     this.telemetry.frame++;
     if (motion.quality !== this.store.get().motionQuality) this.store.set({ motionQuality: motion.quality });
+    const st = this.store.get();
+    if (st.ignition !== 'on') return;
+    const milestones = this.tracker.tick(dt, {
+      mode: st.mode, transmission: st.activeTransmission, driveProfile: st.activeDrive.id,
+      engineId: this.profile.id, layout: layoutGroup(this.profile),
+      speed: motion.speed, quality: motion.quality, rpm: this.drivetrain.state.rpm, now: Date.now(),
+    });
+    if (milestones.length > 0 || t - this.lastStatsSave >= STATS_SAVE_MS) this.saveStats(true);
+  }
+
+  // --- Profile & statistics ------------------------------------------------------------
+
+  /** Display name / vehicle (cleaned and length-limited). */
+  setUserProfile(patch: Partial<UserProfile>): void {
+    const cur = this.store.get().userProfile;
+    const userProfile: UserProfile = {
+      displayName: patch.displayName === undefined ? cur.displayName : cleanText(patch.displayName),
+      vehicle: patch.vehicle === undefined ? cur.vehicle : cleanText(patch.vehicle),
+    };
+    this.store.set({ userProfile });
+    this.storage.save(USER_PROFILE_SCHEMA, userProfile);
+  }
+
+  dismissAchievementToast(): void {
+    this.store.set({ achievementToast: null });
+  }
+
+  /** Inputs of the achievement / challenge rules. */
+  engagementContext(): EngagementContext {
+    const st = this.store.get();
+    return { stats: st.stats, favorites: st.favorites, customCount: st.customEngines.length, catalog: ENGINE_CATALOG, today: dayKey(Date.now()) };
+  }
+
+  /** Persists the statistics (batched) and publishes a snapshot to the UI. */
+  private saveStats(evaluate: boolean): void {
+    this.lastStatsSave = typeof performance === 'undefined' ? Date.now() : performance.now();
+    const snapshot = structuredClone(this.tracker.stats);
+    this.storage.save(STATISTICS_SCHEMA, snapshot);
+    this.store.set({ stats: snapshot });
+    if (evaluate) this.evaluateAchievements(true);
+  }
+
+  /** Awards newly met achievements once (never twice); `announce` shows the Drive toast. */
+  private evaluateAchievements(announce: boolean): void {
+    const st = this.store.get();
+    const { state, awarded } = awardAchievements(st.achievements, this.engagementContext(), Date.now());
+    if (awarded.length === 0) return;
+    this.storage.save(ACHIEVEMENTS_SCHEMA, state);
+    this.store.set({ achievements: state, achievementToast: announce ? { ids: awarded, at: Date.now() } : st.achievementToast });
   }
 
   private async preload(profile: EngineProfile): Promise<void> {

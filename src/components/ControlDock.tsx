@@ -1,7 +1,7 @@
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
 
-export type Panel = 'engines' | 'demo' | 'settings' | 'developer' | null;
+export type Panel = 'engines' | 'demo' | 'profile' | 'settings' | 'developer' | null;
 
 interface Props {
   onOpen: (p: Panel) => void;
@@ -37,6 +37,11 @@ export function ControlDock({ onOpen, profileName, developer = false }: Props) {
       <button className={`dock-btn ${s.mode === 'demo' && on ? 'active' : ''}`} onClick={() => onOpen('demo')}>
         <small>{t('dock.mode')}</small>
         <span>{s.mode === 'demo' && on ? t('dock.modeDemo') : t('dock.modeGps')}</span>
+      </button>
+
+      <button className="dock-btn profile-btn" onClick={() => onOpen('profile')}>
+        <small>{t('dock.profile')}</small>
+        <span>{s.userProfile.displayName || t('dock.profileDefault')}</span>
       </button>
 
       <label className="dock-volume">

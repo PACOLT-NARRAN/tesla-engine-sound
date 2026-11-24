@@ -22,6 +22,16 @@ const REV_RISE_PER_S = 9000;
 export const STALL_FACTOR = 0.85;
 /** Manual mode: a downshift whose RPM would pass limiter − this margin is refused (redline protection). */
 export const OVER_REV_MARGIN = 150;
+/** Virtual pedal smoothing (s): rise / fall. Short fall = lifting off is heard at once. */
+const THROTTLE_RISE_TAU = 0.09;
+const THROTTLE_FALL_TAU = 0.08;
+/** |accel| below this (m/s²) counts as steady cruising; after STEADY_TIME_S the gearbox settles. */
+const STEADY_ACCEL = 0.35;
+const STEADY_TIME_S = 1.2;
+/** Deceleration (m/s²) that counts as braking: faster, earlier downshifts. */
+const BRAKING_ACCEL = -1.2;
+/** Lift-off gear hold (SPORT / TRACK) lasts this long unless the car brakes hard. */
+const LIFT_HOLD_S = 5;
 /** Below this speed (m/s) the car counts as standing for manual-mode neutral. */
 const STANDING_MS = 0.5;
 
@@ -65,6 +75,10 @@ export class VirtualDrivetrain {
   private drive: DriveProfileConfig;
   /** Manual mode: the gear the driver chose (applied by the next update). */
   private manualGear = 0;
+  /** Seconds the speed has been nearly constant (cruising). */
+  private steadyTime = 0;
+  /** Seconds of the current lift-off. */
+  private overrunTime = 0;
 
   constructor(profile: EngineProfile, drive: DriveProfileConfig = DRIVE_PROFILES.sport) {
     this.profile = profile;
@@ -211,15 +225,20 @@ export class VirtualDrivetrain {
 
     // 1) Virtual pedal.
     const rawThrottle = estimateThrottle(input.speed, input.accel, Math.max(1, s.gear), gb, p.dynamics);
-    const tau = (rawThrottle > s.throttle ? 0.12 : 0.22) / this.drive.throttleResponse;
+    const tau = (rawThrottle > s.throttle ? THROTTLE_RISE_TAU : THROTTLE_FALL_TAU) / this.drive.throttleResponse;
     s.throttle = expApproach(s.throttle, rawThrottle, dt, tau);
-    this.shiftThrottle = expApproach(this.shiftThrottle, s.throttle, dt, s.throttle > this.shiftThrottle ? 0.3 : 0.9);
+    this.shiftThrottle = expApproach(this.shiftThrottle, s.throttle, dt, s.throttle > this.shiftThrottle ? 0.25 : 0.5);
+    // Cruising = nearly constant speed under a little power (coasting / engine braking is not cruising).
+    this.steadyTime = Math.abs(input.accel) < STEADY_ACCEL && input.speed > 2 && rawThrottle > 0.02 ? this.steadyTime + dt : 0;
     s.overrun = isOverrun(input.speed, input.accel);
     if (this.revReleaseOverrun > 0) {
       this.revReleaseOverrun -= dt;
       s.overrun = true;
     }
     if (s.revPedal) s.overrun = false;
+    // Lift-off: engine braking, or rolling without throttle.
+    const liftOff = s.overrun || (s.throttle < 0.03 && input.accel < 0 && input.speed > 2);
+    this.overrunTime = liftOff ? this.overrunTime + dt : 0;
     if (s.overrun && !this.wasOverrun) events.push({ type: 'overrun-start', rpm: s.rpm });
     this.wasOverrun = s.overrun;
 
@@ -336,7 +355,12 @@ export class VirtualDrivetrain {
     const auto = selectGear(
       {
         currentGear: this.autoGear, speedMs: input.speed, throttle: this.shiftThrottle, sinceLastShift: this.sinceAutoShift,
-        stationary: input.stationary, overrun: s.overrun && this.drive.holdGearOnLift,
+        stationary: input.stationary,
+        // Lift-off hold lasts a few seconds (or while braking hard), then the gearbox settles again.
+        overrun: this.overrunTime > 0 && this.drive.holdGearOnLift && (this.overrunTime < LIFT_HOLD_S || input.accel < -1.5),
+        cruiseFloorRpm: this.cruiseFloorRpm(),
+        steady: this.steadyTime > STEADY_TIME_S,
+        braking: input.accel < BRAKING_ACCEL && input.speed > 2,
       },
       gb, this.profile.idleRPM, this.profile.limiterRPM,
     );
@@ -369,6 +393,12 @@ export class VirtualDrivetrain {
     this.autoGear = g; // so switching back to automatic continues from here
     this.s.manualOffset = 0;
     return g;
+  }
+
+  /** Lowest RPM the automatic settles at while driving (Drive Profile cruise floor). */
+  cruiseFloorRpm(): number {
+    const p = this.profile;
+    return p.idleRPM + (p.limiterRPM - p.idleRPM) * this.drive.cruiseRpmFactor;
   }
 
   /** Nearest gear to `gear` that keeps the engine between just above idle and just below the limiter. */

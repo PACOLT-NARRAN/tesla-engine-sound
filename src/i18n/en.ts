@@ -720,6 +720,9 @@ export const en = {
   'hud.nitroAria': 'Nitro (hold): gas purge hiss and vapour',
   'settings.aboutTitle': 'About REVLINE',
   'settings.about': 'The name stands for Responsive Electric Vehicle Live Immersive Natural Experience: a live, immersive and natural engine sound that responds to how you drive your EV.',
+  'dock.engineHoldHint': 'Tap: choose an engine. Hold 2 s: random engine.',
+  'dock.engineRandom': '🎲 RANDOM',
+  'dock.engineRandomNone': 'NO OTHER ENGINE',
 } as const;
 
 export type MessageKey = keyof typeof en;

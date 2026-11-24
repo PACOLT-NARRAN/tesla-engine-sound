@@ -65,3 +65,32 @@ keep working.
   and vapour jets that burst sideways from behind the tachometer (`NitroPurge`, CSS animation).
   It does not change RPM, gears or speed. `SessionState.nitro` is not persisted; it is released
   on pointer up / cancel, window blur, tab hide and ignition off.
+
+## Update 29: gear logic and braking latency
+
+- **Cruise floor** (`DriveProfileConfig.cruiseRpmFactor`: COMFORT 0.13, SPORT 0.20, TRACK 0.30 of the
+  idle → limiter range). The automatic never settles below it, so it no longer lugs in a needlessly tall gear.
+- **Steady cruising** (|accel| < 0.35 m/s² under a little throttle for 1.2 s) upshifts when RPM is above
+  floor × 1.3 and the next gear stays above the floor, so it no longer holds a low gear at constant speed.
+- **Upshift curve** `smoothstep(0.35, 1, throttle)`: a moderate EV pull shifts near the relaxed point;
+  only a real push holds gears to the top. SPORT/TRACK relaxed shift points were lowered (0.25 / 0.55).
+- **Braking** (accel < −1.2 m/s²): downshifts below floor × 1.2, at most every 0.45 s, with no upshifts.
+- **Lift-off hold** (SPORT/TRACK) lasts 5 s unless the car brakes hard, then the gearbox settles again.
+- **Braking latency**: `MotionEstimator` now trusts a clear fix-to-fix speed change at once
+  (`fastResponseGain` 0.8 above max(0.6 m/s², 2.5 × running noise)), with alpha 0.75 and beta 0.3.
+  Test `tests/latency.test.ts`: braking at 4 m/s² with 1 Hz GPS lags the true speed by about 1.6 km/h on
+  average, compared with 12.9 km/h before (about 1 s behind). Pedal smoothing is 0.09 s up and 0.08 s down.
+- `f/carspeed` (browser-car-speed) was reviewed. It adds a 3-reading median and acceleration limiting
+  for reliability, which adds delay, so it was not adopted. Its stale and unknown handling is already covered here.
+
+## Random engine
+
+Hold **ENGINE** in the dock for 2 s to jump to a random engine you may drive (never the current one).
+A tap still opens the Garage.
+
+## Background sound (browser minimised)
+
+The Tesla owner's manual says browser audio continues when the browser is minimised. The simulation clock
+runs in a Web Worker (`src/core/tickClock.ts`), so hidden-page timer throttling does not freeze it.
+The Media Session (`src/core/mediaSession.ts`) shows "REVLINE · engine" in the car's Miniplayer, with
+play, pause and stop. Closing the browser tab itself ends the page, and with it the sound.

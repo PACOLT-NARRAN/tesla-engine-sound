@@ -22,6 +22,11 @@ export interface DriveProfileConfig {
   readonly shiftCooldown: number;
   /** Stay in gear when lifting off (engine braking) instead of upshifting. */
   readonly holdGearOnLift: boolean;
+  /**
+   * Cruise floor: the lowest RPM the automatic settles at while driving, as a fraction of the
+   * idle → limiter range. Higher = livelier, never lugs in a needlessly tall gear.
+   */
+  readonly cruiseRpmFactor: number;
   // --- Engine response -------------------------------------------------------------------
   /** Pedal response: >1 = throttle follows the car's acceleration faster. */
   readonly throttleResponse: number;
@@ -45,6 +50,7 @@ export const DRIVE_PROFILE_LIMITS = {
   upshiftRpmFactor: [0, 1],
   downshiftRpmFactor: [0, 1],
   gearHoldTime: [0, 1.5],
+  cruiseRpmFactor: [0.05, 0.45],
   shiftCooldown: [0.5, 1.5],
   throttleResponse: [0.5, 2],
   loadResponse: [0.5, 2],
@@ -58,20 +64,20 @@ export const DRIVE_PROFILE_LIMITS = {
 export const DRIVE_PROFILES: Readonly<Record<DriveProfileId, DriveProfileConfig>> = {
   comfort: {
     id: 'comfort',
-    upshiftRpmFactor: 0, downshiftRpmFactor: 0, gearHoldTime: 0, shiftCooldown: 1.25, holdGearOnLift: false,
+    upshiftRpmFactor: 0, downshiftRpmFactor: 0, gearHoldTime: 0, shiftCooldown: 1.25, holdGearOnLift: false, cruiseRpmFactor: 0.13,
     throttleResponse: 0.7, loadResponse: 0.75, throttleBlipAmount: 0.15,
     audioTransitionSmoothing: 1.8, engineBraking: 0.3, overrunAmount: 0.25, crackleAmount: 0.3,
   },
   // SPORT = the behaviour REVLINE had before Drive Profiles existed.
   sport: {
     id: 'sport',
-    upshiftRpmFactor: 0.35, downshiftRpmFactor: 0.25, gearHoldTime: 0.3, shiftCooldown: 1, holdGearOnLift: true,
+    upshiftRpmFactor: 0.25, downshiftRpmFactor: 0.25, gearHoldTime: 0.3, shiftCooldown: 1, holdGearOnLift: true, cruiseRpmFactor: 0.2,
     throttleResponse: 1, loadResponse: 1, throttleBlipAmount: 0.35,
     audioTransitionSmoothing: 1, engineBraking: 0.65, overrunAmount: 1, crackleAmount: 1,
   },
   track: {
     id: 'track',
-    upshiftRpmFactor: 0.75, downshiftRpmFactor: 0.55, gearHoldTime: 0.6, shiftCooldown: 0.7, holdGearOnLift: true,
+    upshiftRpmFactor: 0.55, downshiftRpmFactor: 0.5, gearHoldTime: 0.6, shiftCooldown: 0.7, holdGearOnLift: true, cruiseRpmFactor: 0.3,
     throttleResponse: 1.4, loadResponse: 1.35, throttleBlipAmount: 0.55,
     audioTransitionSmoothing: 0.55, engineBraking: 1, overrunAmount: 1.4, crackleAmount: 1.4,
   },

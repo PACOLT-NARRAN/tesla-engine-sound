@@ -709,4 +709,7 @@ export const cs: Record<MessageKey, string> = {
   'hud.nitroAria': 'Nitro (držet): syčení plynu a pára',
   'settings.aboutTitle': 'O REVLINE',
   'settings.about': 'Název znamená Responsive Electric Vehicle Live Immersive Natural Experience – živý, pohlcující a přirozený zvuk motoru, který reaguje na to, jak řídíš svůj elektromobil.',
+  'dock.engineHoldHint': 'Klepnutí: výběr motoru. Podržení 2 s: náhodný motor.',
+  'dock.engineRandom': '🎲 NÁHODNÝ',
+  'dock.engineRandomNone': 'ŽÁDNÝ DALŠÍ MOTOR',
 };

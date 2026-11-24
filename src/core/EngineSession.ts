@@ -30,6 +30,10 @@ import {
 } from '../studio/customEngine.ts';
 import { PREVIEW_SECONDS, revPedalAt } from './preview.ts';
 import { ENGINE_CATALOG } from '../profiles/catalog.ts';
+import { startTickClock, type StopClock } from './tickClock.ts';
+import { updateMediaSession } from './mediaSession.ts';
+import { randomEnginePool } from './randomEngine.ts';
+import { engineTitle } from '../profiles/presentation.ts';
 import { layoutGroup } from '../garage/garage.ts';
 import { STATISTICS_SCHEMA, StatsTracker, dayKey, emptyStatistics, type Statistics } from '../engagement/stats.ts';
 import { ACHIEVEMENTS_SCHEMA, awardAchievements, type AchievementId, type AchievementState, type EngagementContext } from '../engagement/achievements.ts';
@@ -133,7 +137,7 @@ export class EngineSession {
   private readonly audio = new EngineAudioEngine();
   private readonly loader: SoundBankLoader;
   private source: MotionSource | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: StopClock | null = null;
   private lastTick = 0;
   private profile: EngineProfile;
   private profileToken = 0;
@@ -294,6 +298,24 @@ export class EngineSession {
     this.startLoop();
     this.store.set({ ignition: 'on', audioStatus: this.audio.context?.state === 'running' ? 'running' : 'suspended', bankKind: bank.kind });
     if (!this.source) this.startSource(this.store.get().mode);
+    this.syncMediaSession();
+  }
+
+  /** Car media player entry (Tesla Miniplayer while the browser is minimised). */
+  private syncMediaSession(): void {
+    if (typeof window === 'undefined') return;
+    if (this.store.get().ignition !== 'on') {
+      updateMediaSession(null);
+      return;
+    }
+    updateMediaSession(
+      { engine: engineTitle(this.profile), playing: this.audio.context?.state !== 'suspended' },
+      {
+        play: () => void this.resumeAudio().then(() => this.syncMediaSession()),
+        pause: () => void this.audio.suspend().catch(() => undefined).then(() => this.syncMediaSession()),
+        stop: () => this.shutdown(),
+      },
+    );
   }
 
   shutdown(): void {
@@ -312,6 +334,7 @@ export class EngineSession {
     this.audio.setNitro(false);
     this.store.set({ ignition: 'off', audioStatus: 'ready', mode: 'gps', sourceStatus: { kind: 'idle' }, nitro: false });
     this.applyDrive();
+    this.syncMediaSession();
   }
 
   async resumeAudio(): Promise<void> {
@@ -331,6 +354,20 @@ export class EngineSession {
       this.markUsed(id);
     }
     await this.applyEngine();
+  }
+
+  /**
+   * Random engine (long press on ENGINE): any engine the user may drive right now, other than
+   * the current one. Returns the chosen id, or null if there is nothing else to pick.
+   */
+  async selectRandomEngine(random: () => number = Math.random): Promise<string | null> {
+    const st = this.store.get();
+    const pool = randomEnginePool(this.allProfiles().map((p) => p.id), st.profileId, (id) => canUseEngine(st.entitlements, this.requirement(id)));
+    if (pool.length === 0) return null;
+    const id = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
+    if (id === undefined) return null;
+    await this.selectProfile(id);
+    return id;
   }
 
   /** Try before you buy: select the engine and drive it in Demo (call from a tap). */
@@ -383,6 +420,7 @@ export class EngineSession {
       this.drivetrain.setProfile(this.geared(profile));
       this.audio.start(bank, this.geared(profile));
       this.store.set({ audioStatus: 'running', bankKind: bank.kind });
+      this.syncMediaSession();
     } else {
       this.drivetrain.setProfile(this.geared(profile));
       await this.preload(profile);
@@ -875,11 +913,12 @@ export class EngineSession {
   private startLoop(): void {
     if (this.timer !== null) return;
     this.lastTick = performance.now();
-    this.timer = setInterval(() => this.tick(), TICK_MS);
+    // Worker clock: keeps the engine following the car while the browser is minimised.
+    this.timer = startTickClock(TICK_MS, () => this.tick());
   }
 
   private stopLoop(): void {
-    if (this.timer !== null) clearInterval(this.timer);
+    this.timer?.();
     this.timer = null;
   }
 

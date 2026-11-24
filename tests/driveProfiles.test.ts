@@ -90,7 +90,7 @@ test('measurable: TRACK throttle reacts faster than COMFORT', () => {
     const dt = new VirtualDrivetrain(applyDriveProfile(oneGear, getDriveProfile(id)), getDriveProfile(id));
     dt.ignite();
     cruise(dt, 50, 3);
-    run(dt, 0.25, () => kmh(50), 3.5); // sudden acceleration
+    run(dt, 0.1, () => kmh(50), 3.5); // sudden acceleration (first 0.1 s)
     return dt.state.throttle;
   };
   assert.ok(resp('track') > resp('comfort') + 0.1, `track ${resp('track').toFixed(2)} comfort ${resp('comfort').toFixed(2)}`);

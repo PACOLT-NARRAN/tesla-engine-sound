@@ -1155,3 +1155,18 @@ input[type='range'] { accent-color: var(--accent); width: clamp(110px, 12vw, 200
 }
 .about-meaning .brand-meaning { font-size: 1.05em; letter-spacing: 0.04em; color: var(--text); }
 @media (max-width: 900px) { .brand-tagline { display: none; } }
+
+/* ---------- ENGINE button: hold 2 s for a random engine ---------- */
+.engine-btn { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.engine-btn > small, .engine-btn > span:not(.engine-hold-bar) { position: relative; z-index: 1; }
+.engine-hold-bar {
+  position: absolute; left: 0; bottom: 0; height: 100%; width: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,59,31,0.10), rgba(255,59,31,0.38));
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+.engine-btn.holding .engine-hold-bar { animation: engine-hold 2s linear forwards; }
+@keyframes engine-hold { from { width: 0; } to { width: 100%; } }
+.engine-btn.flash-ok { animation: engine-flash 1.4s ease-out; border-color: var(--accent); }
+.engine-btn.flash-ok > small { color: var(--accent); }
+.engine-btn.flash-none > small { color: var(--amber); }
+@keyframes engine-flash { 0% { box-shadow: 0 0 0 0 rgba(255,59,31,0.7); } 100% { box-shadow: 0 0 0 18px rgba(255,59,31,0); } }

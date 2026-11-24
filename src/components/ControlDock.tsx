@@ -1,3 +1,4 @@
+import { EngineButton } from './EngineButton.tsx';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
 
@@ -29,10 +30,7 @@ export function ControlDock({ onOpen, profileName, developer = false }: Props) {
         </span>
       </button>
 
-      <button className="dock-btn engine-btn" onClick={() => onOpen('engines')}>
-        <small>{t('dock.engine')}</small>
-        <span>{profileName}</span>
-      </button>
+      <EngineButton profileName={profileName} onOpen={() => onOpen('engines')} />
 
       <button className={`dock-btn ${s.mode === 'demo' && on ? 'active' : ''}`} onClick={() => onOpen('demo')}>
         <small>{t('dock.mode')}</small>

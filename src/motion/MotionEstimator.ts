@@ -30,6 +30,13 @@ export interface MotionEstimatorConfig {
   beta: number;
   /** Max horizon for dead-reckoning between fixes (seconds). */
   predictHorizonS: number;
+  /**
+   * Fast response: weight (0..1) given to the raw fix-to-fix speed change when the car clearly
+   * brakes or accelerates (|change| > fastResponseMs2). The plain alpha-beta filter needs 2–3
+   * fixes (≈ 2–3 s at 1 Hz GPS) to notice braking; this makes it react on the first fix.
+   */
+  fastResponseGain: number;
+  fastResponseMs2: number;
 }
 
 export const DEFAULT_MOTION_CONFIG: MotionEstimatorConfig = {
@@ -45,10 +52,12 @@ export const DEFAULT_MOTION_CONFIG: MotionEstimatorConfig = {
   stationaryEnterMs: 0.45,
   stationaryExitMs: 0.9,
   jitterFactor: 0.3,
-  alphaGood: 0.5,
-  alphaPoor: 0.2,
-  beta: 0.15,
+  alphaGood: 0.75,
+  alphaPoor: 0.35,
+  beta: 0.3,
   predictHorizonS: 1.2,
+  fastResponseGain: 0.8,
+  fastResponseMs2: 0.6,
 };
 
 interface Anchor {
@@ -78,6 +87,10 @@ export class MotionEstimator {
   private consecutiveOutliers = 0;
   private lastAccuracy: number | null = null;
   private rawSpeed: number | null = null;
+  /** Last accepted measured speed and its time, for the fast-response derivative. */
+  private lastMeasured: { speed: number; ts: number } | null = null;
+  /** Running mean of |measured − predicted| (m/s): how noisy this GPS is right now. */
+  private noise = 0.3;
   private rawSource: SpeedSource = 'none';
   private lastReject: FixRejectReason | null = null;
   private accepted = 0;
@@ -98,6 +111,8 @@ export class MotionEstimator {
     this.consecutiveOutliers = 0;
     this.lastAccuracy = null;
     this.rawSpeed = null;
+    this.lastMeasured = null;
+    this.noise = 0.3;
     this.rawSource = 'none';
     this.lastReject = null;
     this.accepted = 0;
@@ -173,9 +188,24 @@ export class MotionEstimator {
       const alpha = poor ? c.alphaPoor : c.alphaGood;
       const predicted = Math.max(0, this.speed + this.accel * dt);
       const residual = measured - predicted;
+      // Noise estimate updated after the fast-response check below uses the previous value.
+      const noiseBefore = this.noise;
+      this.noise += (Math.min(Math.abs(residual), 5) - this.noise) * 0.2;
       this.speed = Math.max(0, predicted + alpha * residual);
       this.accel = clamp(this.accel + (c.beta * residual) / dt, -c.maxAccelMs2, c.maxAccelMs2);
+      // Fast response: a clear change between two fixes is believed at once (braking is heard on
+      // the first fix instead of after 2–3 s of filter lag).
+      const lm = this.lastMeasured;
+      const mdt = lm ? (fix.timestamp - lm.ts) / 1000 : 0;
+      if (lm && mdt >= c.minFallbackDtS && mdt <= 3 && !poor) {
+        const d = clamp((measured - lm.speed) / mdt, -c.maxAccelMs2, c.maxAccelMs2);
+        if (Math.abs(d) > Math.max(c.fastResponseMs2, noiseBefore * 2.5 / mdt) && (Math.sign(d) !== Math.sign(this.accel) || Math.abs(d) > Math.abs(this.accel))) {
+          this.accel = this.accel + (d - this.accel) * c.fastResponseGain;
+          this.speed = Math.max(0, this.speed + (measured - this.speed) * c.fastResponseGain * 0.5);
+        }
+      }
     }
+    this.lastMeasured = { speed: measured, ts: fix.timestamp };
 
     // 4) Stationary hysteresis (suppresses GPS jitter at standstill).
     if (this.stationary) {

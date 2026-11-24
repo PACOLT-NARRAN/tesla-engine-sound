@@ -133,6 +133,11 @@ export class EngineAudioEngine {
     if (this.ctx && this.ctx.state !== 'running') await this.ctx.resume();
   }
 
+  /** Pause from the car's media player (Media Session): silences everything until resume(). */
+  async suspend(): Promise<void> {
+    if (this.ctx && this.ctx.state === 'running') await this.ctx.suspend();
+  }
+
   setVolume(v: number): void {
     this.volume = clamp(v, 0, 1);
     this.output?.apply(this.outputSettings());

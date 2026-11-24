@@ -14,6 +14,7 @@ import { EngineDetail } from './EngineDetail.tsx';
 import { FavoriteButton, LockNote, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
 import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { SoundStudio } from './SoundStudio.tsx';
+import { getProfile } from '../profiles/registry.ts';
 import { CommunityPanel } from './CommunityPanel.tsx';
 
 /** Filter chips, grouped with a small gap between groups. */
@@ -36,7 +37,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<GarageSort>('recommended');
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [studio, setStudio] = useState<{ spec: CustomEngineSpec; isNew: boolean } | null>(null);
+  const [studio, setStudio] = useState<{ spec: CustomEngineSpec; isNew: boolean; base?: { id: string; title: string } } | null>(null);
   const [community, setCommunity] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const upgrade = useUpgrade();
@@ -71,7 +72,15 @@ export function Garage({ onClose }: { onClose: () => void }) {
     const spec = s.customEngines.find((c) => c.id === id);
     if (spec) openStudio(spec, false);
   };
-  const useAsBase = (item: GarageItem) => openStudio(specFromProfile(item.profile, t('studio.baseName', { name: item.title })), true);
+  /** PRO: edit a built-in engine straight from the Garage (my version, or save as a new engine). */
+  const editBuiltIn = (item: GarageItem) => {
+    const id = item.profile.id;
+    const original = getProfile(id) ?? item.profile;
+    const existing = session.overrideFor(id);
+    session.stopPreview();
+    setDetailId(null);
+    setStudio({ spec: existing ?? { ...specFromProfile(original, item.title), overrides: id }, isNew: !existing, base: { id, title: item.title } });
+  };
 
   const resetFilters = () => {
     setFilter('all');
@@ -172,7 +181,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
             onClose();
           }}
           onEdit={() => editEngine(detail.profile.id)}
-          onUseAsBase={() => useAsBase(detail)}
+          onUseAsBase={() => editBuiltIn(detail)}
         />
       )}
 
@@ -183,6 +192,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
           key={studio.spec.id}
           initial={studio.spec}
           isNew={studio.isNew}
+          base={studio.base}
           onClose={() => setStudio(null)}
           onSaved={(id) => {
             setStudio(null);

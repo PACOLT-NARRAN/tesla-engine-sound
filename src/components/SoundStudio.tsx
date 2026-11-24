@@ -23,16 +23,20 @@ interface Props {
   onClose: () => void;
   /** Called after a successful save (or duplicate) with the saved id. */
   onSaved: (id: string) => void;
+  /** PRO "edit any engine": the built-in engine being edited (overwrite for me / save as new). */
+  base?: { id: string; title: string };
 }
 
 const BANKS = ENGINE_PROFILES.filter((p) => p.audio.converted);
-const BANK_IDS: ReadonlySet<string> = new Set(BANKS.map((p) => p.id));
+/** Fun-pack engines: their REVLINE synth voice can be borrowed too. */
+const VOICES = ENGINE_PROFILES.filter((p) => !p.audio.converted && p.audio.voice);
+const BANK_IDS: ReadonlySet<string> = new Set([...BANKS, ...VOICES].map((p) => p.id));
 
 /**
  * REVLINE Sound Studio: create or edit a custom engine. Full-screen layer inside the Garage
  * (parked use). Everything is validated inline; only a valid engine can be saved or previewed.
  */
-export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
+export function SoundStudio({ initial, isNew, onClose, onSaved, base }: Props) {
   const session = useSession();
   const s = useSessionState();
   const t = useT();
@@ -133,8 +137,35 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
     if (spec) void session.previewDraft(spec);
     else setMessage({ kind: 'error', text: t('studio.fixErrors', { count: issues.length }) });
   };
+  /** Built-in edit: keep it as my version of this engine. */
+  const overwrite = async () => {
+    if (!base) return;
+    setTouched(true);
+    if (!canSave) return setMessage({ kind: 'lock', text: t('studio.lockedSave') });
+    if (!spec) return setMessage({ kind: 'error', text: t('studio.fixErrors', { count: issues.length }) });
+    const r = await session.saveCustomEngine({ ...spec, overrides: base.id });
+    if (r !== 'saved') return setMessage({ kind: r === 'locked' ? 'lock' : 'error', text: t(`studio.save.${r}`) });
+    onSaved(base.id);
+  };
+  /** Built-in edit: add it to the Garage as a new engine; the original stays as it is. */
+  const saveAsNew = async () => {
+    if (!base) return;
+    setTouched(true);
+    if (!canSave) return setMessage({ kind: 'lock', text: t('studio.lockedSave') });
+    if (!spec) return setMessage({ kind: 'error', text: t('studio.fixErrors', { count: issues.length }) });
+    const copy = duplicateSpec(spec, spec.name === base.title ? t('studio.baseName', { name: base.title }) : spec.name);
+    const r = await session.saveCustomEngine(copy);
+    if (r !== 'saved') return setMessage({ kind: r === 'locked' ? 'lock' : 'error', text: t(`studio.save.${r}`) });
+    onSaved(copy.id);
+  };
+  const restore = async () => {
+    if (!base) return;
+    await session.restoreOriginal(base.id);
+    onSaved(base.id);
+  };
+  const edited = base ? session.overrideFor(base.id) !== undefined : false;
   const reset = () => {
-    setDraft(isNew ? toDraft({ ...defaultSpec(), id: initial.id }) : toDraft(initial));
+    setDraft(isNew && !base ? toDraft({ ...defaultSpec(), id: initial.id }) : toDraft(initial));
     setTouched(false);
     setMessage(null);
   };
@@ -176,8 +207,9 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
       <header className="garage-head">
         <button className="btn garage-back" onClick={close} aria-label={t('studio.backAria')}>← {t('garage.title')}</button>
         <h2>{t('studio.title')}</h2>
-        <span className="garage-count">{isNew ? t('studio.new') : t('studio.editing')}</span>
+        <span className="garage-count">{base ? base.title : isNew ? t('studio.new') : t('studio.editing')}</span>
       </header>
+      {base && <p className="studio-base-hint" data-testid="studio-base-hint">{t('studio.baseHint', { name: base.title })}</p>}
 
       <div className="studio-body">
         <p className="studio-explain">{t('studio.explain')}</p>
@@ -222,6 +254,14 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
                   return <option key={p.id} value={p.id}>{engineTitle(p)}{lock ? ` · ${t(lock === 'pack' ? 'garage.tier.pack' : 'garage.tier.pro')}` : ''}</option>;
                 })}
               </optgroup>
+              {VOICES.length > 0 && (
+                <optgroup label={t('studio.soundVoices')}>
+                  {VOICES.map((p) => {
+                    const lock = session.engineLock(p.id);
+                    return <option key={p.id} value={p.id}>{engineTitle(p)}{lock ? ` · ${t(lock === 'pack' ? 'garage.tier.pack' : 'garage.tier.pro')}` : ''}</option>;
+                  })}
+                </optgroup>
+              )}
             </select>
             <small className="studio-hint">
               {draft.sound.kind === 'bank' ? t('studio.soundBankHint', { name: bankName(draft.sound.bankId) }) : t('studio.soundSynthHint')}
@@ -329,11 +369,25 @@ export function SoundStudio({ initial, isNew, onClose, onSaved }: Props) {
               {previewing === 'loading' ? t('garage.previewLoading') : previewing === 'playing' ? t('garage.previewStop') : t('garage.preview')}
             </button>
             <button className="btn" onClick={reset} disabled={!dirty && !touched} data-action="reset">{t('studio.reset')}</button>
-            {!isNew && <button className="btn" onClick={() => void duplicate()} disabled={!spec || !canSave} data-action="duplicate">{t('studio.duplicate')}</button>}
-            {!isNew && <button className="btn btn-danger" onClick={() => setConfirm('delete')} data-action="delete">{t('studio.delete')}</button>}
-            <button className="btn btn-primary studio-save" onClick={() => void save()} data-action="save">
-              {t('studio.save')}{!canSave && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
-            </button>
+            {base ? (
+              <>
+                {edited && <button className="btn" onClick={() => void restore()} data-action="restore">{t('studio.restore')}</button>}
+                <button className="btn" onClick={() => void saveAsNew()} data-action="save-as-new">
+                  {t('studio.saveAsNew')}{!canSave && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
+                </button>
+                <button className="btn btn-primary studio-save" onClick={() => void overwrite()} data-action="overwrite">
+                  {t('studio.overwrite')}{!canSave && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
+                </button>
+              </>
+            ) : (
+              <>
+                {!isNew && <button className="btn" onClick={() => void duplicate()} disabled={!spec || !canSave} data-action="duplicate">{t('studio.duplicate')}</button>}
+                {!isNew && <button className="btn btn-danger" onClick={() => setConfirm('delete')} data-action="delete">{t('studio.delete')}</button>}
+                <button className="btn btn-primary studio-save" onClick={() => void save()} data-action="save">
+                  {t('studio.save')}{!canSave && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
+                </button>
+              </>
+            )}
           </div>
         )}
       </footer>

@@ -11,7 +11,7 @@ import { clamp } from '../utils/math.ts';
  * All numbers are stored in the units the editor shows (litres, RPM, percent).
  */
 
-export const CUSTOM_LAYOUTS = ['V12', 'V10', 'V8', 'Inline-6', 'Inline-4', 'Flat-6', 'Rotary'] as const;
+export const CUSTOM_LAYOUTS = ['V12', 'V10', 'V8', 'Inline-6', 'Inline-4', 'Flat-6', 'Rotary', 'Unknown'] as const;
 export type CustomLayout = (typeof CUSTOM_LAYOUTS)[number] & EngineCategory;
 
 export const CUSTOM_INDUCTIONS = ['naturally-aspirated', 'turbo', 'twin-turbo', 'supercharged', 'twin-charged'] as const;
@@ -57,6 +57,11 @@ export interface CustomEngineSpec {
   /** %: supercharger whine (supercharged inductions only). */
   supercharger: number;
   sound: SoundSource;
+  /**
+   * REVLINE PRO "edit any engine": the built-in engine this spec replaces for this user only.
+   * Absent = a normal Sound Studio engine of its own.
+   */
+  overrides?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -75,13 +80,13 @@ export interface FieldLimit {
 
 /** Realistic limits of every numeric field. */
 export const LIMITS: Readonly<Record<NumericField, FieldLimit>> = {
-  cylinders: { min: 2, max: 12, step: 1, decimals: 0 },
-  displacementL: { min: 0.6, max: 8.5, step: 0.1, decimals: 1 },
-  idleRPM: { min: 500, max: 1500, step: 50, decimals: 0 },
-  maxRPM: { min: 4000, max: 11000, step: 100, decimals: 0 },
+  cylinders: { min: 1, max: 16, step: 1, decimals: 0 },
+  displacementL: { min: 0.05, max: 150, step: 0.05, decimals: 2 },
+  idleRPM: { min: 350, max: 3000, step: 50, decimals: 0 },
+  maxRPM: { min: 900, max: 20000, step: 100, decimals: 0 },
   crackle: { min: 0, max: 100, step: 5, decimals: 0 },
-  gearCount: { min: 4, max: 10, step: 1, decimals: 0 },
-  finalDrive: { min: 2, max: 5.5, step: 0.05, decimals: 2 },
+  gearCount: { min: 1, max: 10, step: 1, decimals: 0 },
+  finalDrive: { min: 0.5, max: 20, step: 0.05, decimals: 2 },
   throttleResponse: { min: 50, max: 200, step: 5, decimals: 0 },
   engineBraking: { min: 0, max: 100, step: 5, decimals: 0 },
   overrun: { min: 0, max: 100, step: 5, decimals: 0 },
@@ -91,7 +96,8 @@ export const LIMITS: Readonly<Record<NumericField, FieldLimit>> = {
 
 export const RATIO_LIMITS = { min: 0.4, max: 6, minStep: 0.05, decimals: 2 } as const;
 /** Idle must stay at least this far below the redline. */
-export const MIN_REV_RANGE = 3000;
+/** Smallest idle → redline span (a big slow diesel locomotive needs little). */
+export const MIN_REV_RANGE = 500;
 export const LIMITER_MARGIN = 200;
 export const NAME_MAX = 40;
 export const DESCRIPTION_MAX = 200;
@@ -101,6 +107,8 @@ const TIRE_RADIUS_M = 0.33;
 /** Cylinder counts allowed for each layout (rotary = rotors). */
 export const LAYOUT_CYLINDERS: Readonly<Record<CustomLayout, readonly number[]>> = {
   V12: [12], V10: [10], V8: [8], 'Inline-6': [6], 'Inline-4': [4], 'Flat-6': [6], Rotary: [2, 3, 4],
+  // Anything else (bikes, two-strokes, radials, locomotives, fun-pack machines).
+  Unknown: [1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 16],
 };
 
 export const hasTurbo = (i: CustomInduction) => i === 'turbo' || i === 'twin-turbo' || i === 'twin-charged';
@@ -220,6 +228,7 @@ export function defaultSpec(now = Date.now(), id = newCustomId(now)): CustomEngi
 /** Typical close-ratio gearbox: big steps low down, small steps up top (strictly descending). */
 export function generateRatios(gearCount: number): number[] {
   const n = Math.round(clamp(gearCount, LIMITS.gearCount.min, LIMITS.gearCount.max));
+  if (n === 1) return [1];
   const first = clamp(3.4 + 0.15 * (n - 6), 2.9, 4.7);
   const last = n <= 5 ? 0.85 : n <= 7 ? 0.78 : 0.66;
   const out: number[] = [];
@@ -270,6 +279,8 @@ export function buildCustomProfile(spec: CustomEngineSpec, bank?: EngineProfile)
   const gb = GEARBOX[spec.gearboxType];
   const response = spec.throttleResponse / 100;
   const useBank = spec.sound.kind === 'bank' && bank?.audio.converted === true;
+  // Fun-pack engines have no recording: their REVLINE voice is re-rendered for this engine's revs.
+  const voice = spec.sound.kind === 'bank' && bank && !bank.audio.converted ? bank.audio.voice : undefined;
   const pct = (v: number) => clamp(v / 100, 0, 1);
 
   return {
@@ -280,7 +291,7 @@ export function buildCustomProfile(spec: CustomEngineSpec, bank?: EngineProfile)
     aspiration: spec.induction,
     cylinders: spec.cylinders,
     displacementL: spec.displacementL,
-    source: { configLabel: 'Sound Studio', soundName: useBank && bank ? bank.id : 'synth', awc: '', audioConfig: [] },
+    source: { configLabel: 'Sound Studio', soundName: (useBank || voice) && bank ? bank.id : 'synth', awc: '', audioConfig: [] },
     idleRPM: idle,
     redlineRPM: red,
     limiterRPM: red + LIMITER_MARGIN,
@@ -308,6 +319,7 @@ export function buildCustomProfile(spec: CustomEngineSpec, bank?: EngineProfile)
       supercharger: hasSupercharger(spec.induction) ? pct(spec.supercharger) : 0,
       offLoad: 0.6 + 0.8 * pct(spec.overrun),
       ...(useBank && bank ? { bankRpm: { idle: bank.idleRPM, limiter: bank.limiterRPM } } : {}),
+      ...(voice ? { voice } : {}),
       placeholderTone: { brightness: ex.brightness, roughness: ex.roughness },
     },
   };
@@ -336,13 +348,15 @@ export function specFromProfile(p: EngineProfile, name: string, now = Date.now()
     customRatios: ratiosOk ? ratios : null,
     turbo: hasTurbo(induction) ? 60 : 0,
     supercharger: hasSupercharger(induction) ? 60 : 0,
-    sound: p.audio.converted ? { kind: 'bank', bankId: p.id } : { kind: 'synth' },
+    sound: p.audio.converted || p.audio.voice ? { kind: 'bank', bankId: p.id } : { kind: 'synth' },
   };
 }
 
 /** Copy with a new id and timestamps ("Duplicate"). */
 export function duplicateSpec(spec: CustomEngineSpec, name: string, now = Date.now()): CustomEngineSpec {
-  return { ...spec, id: newCustomId(now), name: name.slice(0, NAME_MAX), customRatios: spec.customRatios ? [...spec.customRatios] : null, createdAt: now, updatedAt: now };
+  // A copy is always an engine of its own, never a replacement of a built-in one.
+  const { overrides: _replaced, ...own } = spec;
+  return { ...own, id: newCustomId(now), name: name.slice(0, NAME_MAX), customRatios: spec.customRatios ? [...spec.customRatios] : null, createdAt: now, updatedAt: now };
 }
 
 // --- Storage ------------------------------------------------------------------------------
@@ -372,6 +386,7 @@ export function sanitizeSpec(raw: unknown): CustomEngineSpec | null {
     createdAt: pickNumber(o.createdAt, 0, Number.MAX_SAFE_INTEGER, 0),
     updatedAt: pickNumber(o.updatedAt, 0, Number.MAX_SAFE_INTEGER, 0),
   };
+  if (typeof o.overrides === 'string' && /^[a-z0-9_-]{1,64}$/.test(o.overrides) && !isCustomId(o.overrides)) spec.overrides = o.overrides;
   return validateSpec(spec).length === 0 ? spec : null;
 }
 

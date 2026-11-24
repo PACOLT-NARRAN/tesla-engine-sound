@@ -1,4 +1,5 @@
 import type { EngineCatalogEntry, EngineOrigin, EngineTier, LocalizedText } from '../types/catalog.ts';
+import { FUN_CATALOG } from './funEngines.ts';
 
 const entry = (
   id: string,
@@ -53,6 +54,8 @@ export const ENGINE_CATALOG: readonly EngineCatalogEntry[] = [
   entry('k20a', 'JDM HIGH-REV I4', 'japanese', 'Japanese high-revving 2.0 L four with a sharp VTEC-style top end.', 'Japonský vytáčivý čtyřválec 2,0 l s ostrým vrškem ve stylu VTEC.', ['jdm', 'hot-hatch']),
   entry('shonen', 'STREET ENGINE', 'generic', 'Street-tuned engine with a generic sporty character.', 'Pouliční motor s obecným sportovním charakterem.', ['street']),
   entry('p60b40', 'RACING V8', 'german', 'High-revving racing V8.', 'Vysokootáčkový závodní V8.', ['race']),
+  // Fun packs (REVLINE voice synthesiser), see funEngines.ts.
+  ...FUN_CATALOG,
 ];
 
 const BY_ID: ReadonlyMap<string, EngineCatalogEntry> = new Map(ENGINE_CATALOG.map((e) => [e.id, e]));

@@ -146,6 +146,8 @@ export class EngineSession {
   private previewTimer: ReturnType<typeof setInterval> | null = null;
   private previewToken = 0;
   private customProfiles = new Map<string, EngineProfile>();
+  /** PRO "edit any engine": built-in id → the user's edited version (same id, own settings). */
+  private overrideProfiles = new Map<string, EngineProfile>();
   private customSpecs = new Map<string, CustomEngineSpec>();
   private readonly tracker: StatsTracker;
   private lastStatsSave = 0;
@@ -228,12 +230,34 @@ export class EngineSession {
 
   /** Built-in or Sound Studio engine by id. */
   findProfile(id: string): EngineProfile | undefined {
-    return getProfile(id) ?? this.customProfiles.get(id);
+    const builtIn = getProfile(id);
+    if (builtIn) return this.activeOverride(id) ?? builtIn;
+    return this.customProfiles.get(id);
+  }
+
+  /** The user's edited version of a built-in engine, while REVLINE PRO allows using it. */
+  private activeOverride(id: string): EngineProfile | undefined {
+    const st = this.store?.get();
+    if (!st || !canCreateCustomProfile(st.entitlements)) return undefined;
+    return this.overrideProfiles.get(id);
+  }
+
+  /** Saved edit of a built-in engine (PRO), if any. */
+  overrideFor(builtInId: string): CustomEngineSpec | undefined {
+    return this.store.get().customEngines.find((c) => c.overrides === builtInId);
+  }
+
+  /** Throws away the user's edit of a built-in engine: the original plays again. */
+  async restoreOriginal(builtInId: string): Promise<void> {
+    const spec = this.overrideFor(builtInId);
+    if (!spec) return;
+    this.deleteCustomEngine(spec.id);
+    if (this.profile.id === builtInId) await this.activate(this.findProfile(builtInId) ?? defaultProfile());
   }
 
   /** Every engine the Garage lists: built-in first, then Sound Studio engines. */
   allProfiles(): EngineProfile[] {
-    return [...ENGINE_PROFILES, ...this.customProfiles.values()];
+    return [...ENGINE_PROFILES.map((p) => this.activeOverride(p.id) ?? p), ...this.customProfiles.values()];
   }
 
   /**
@@ -700,7 +724,7 @@ export class EngineSession {
     const st = this.store.get();
     if (!canCreateCustomProfile(st.entitlements)) return 'locked';
     if (spec.sound.kind === 'bank' && this.engineLock(spec.sound.bankId) !== null) return 'locked';
-    if (validateSpec(spec, new Set(ENGINE_PROFILES.filter((p) => p.audio.converted).map((p) => p.id))).length) return 'invalid';
+    if (validateSpec(spec, new Set(ENGINE_PROFILES.filter((p) => p.audio.converted || p.audio.voice).map((p) => p.id))).length) return 'invalid';
     const exists = st.customEngines.some((c) => c.id === spec.id);
     if (!exists && st.customEngines.length >= MAX_CUSTOM_ENGINES) return 'full';
     const customEngines = upsertSpec(st.customEngines, { ...spec, updatedAt: Date.now() });
@@ -711,8 +735,8 @@ export class EngineSession {
       this.tracker.noteEngineCreated();
       this.saveStats(true);
     }
-    const updated = this.customProfiles.get(spec.id);
-    if (updated && this.profile.id === spec.id) await this.activate(updated);
+    const updated = spec.overrides ? this.findProfile(spec.overrides) : this.customProfiles.get(spec.id);
+    if (updated && this.profile.id === updated.id) await this.activate(updated);
     return 'saved';
   }
 
@@ -747,7 +771,7 @@ export class EngineSession {
       canSaveCustom: canCreateCustomProfile(st.entitlements),
       hasPro: st.entitlements.plan === 'pro',
       bankLocked: (id) => this.engineLock(id) !== null,
-      banks: new Set(ENGINE_PROFILES.filter((p) => p.audio.converted).map((p) => p.id)),
+      banks: new Set(ENGINE_PROFILES.filter((p) => p.audio.converted || p.audio.voice).map((p) => p.id)),
       customIds: new Set(st.customEngines.map((c) => c.id)),
       local: st.community,
     };
@@ -821,7 +845,12 @@ export class EngineSession {
 
   private rebuildCustomProfiles(list: readonly CustomEngineSpec[]): void {
     this.customSpecs = new Map(list.map((c) => [c.id, c]));
-    this.customProfiles = new Map(list.map((c) => [c.id, this.customProfile(c)]));
+    const own = list.filter((c) => !c.overrides || !getProfile(c.overrides));
+    this.customProfiles = new Map(own.map((c) => [c.id, this.customProfile(c)]));
+    // Edits of built-in engines keep the built-in id, so selection, favorites and packs still apply.
+    this.overrideProfiles = new Map(
+      list.filter((c) => c.overrides && getProfile(c.overrides)).map((c) => [c.overrides as string, { ...this.customProfile(c), id: c.overrides as string }]),
+    );
   }
 
   /** Developer Mode: experimental scroll trap for steering wheels that only scroll the page. */

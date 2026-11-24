@@ -5,9 +5,14 @@ import { ENGINE_CATALOG, getCatalogEntry } from '../src/profiles/catalog.ts';
 import { engineSubtitle, engineTitle } from '../src/profiles/presentation.ts';
 import { validateProfile } from '../src/profiles/schema.ts';
 import { translator } from '../src/i18n/index.ts';
+import { FUN_PROFILES } from '../src/profiles/funEngines.ts';
 
 const dir = new URL('../src/profiles/engines/', import.meta.url);
-const profiles = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => validateProfile(JSON.parse(readFileSync(new URL(f, dir), 'utf8')), f));
+// Same set as the registry: JSON engines + the fun-pack engines.
+const profiles = [
+  ...readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => validateProfile(JSON.parse(readFileSync(new URL(f, dir), 'utf8')), f)),
+  ...FUN_PROFILES,
+];
 
 test('every engine profile has a catalog entry and vice versa', () => {
   const ids = new Set(profiles.map((p) => p.id));

@@ -1,6 +1,7 @@
 import type { EngineProfile } from '../types/profile.ts';
 import { engineTitle } from './presentation.ts';
 import { validateProfile } from './schema.ts';
+import { FUN_PROFILES } from './funEngines.ts';
 
 /**
  * Every JSON file in ./engines is an engine profile. Adding an engine = dropping in
@@ -22,6 +23,13 @@ function load(): { profiles: EngineProfile[]; issues: ProfileLoadIssue[] } {
     } catch (e) {
       issues.push({ file, message: e instanceof Error ? e.message : String(e) });
       console.warn('[profiles] skipped', file, e);
+    }
+  }
+  for (const p of FUN_PROFILES) {
+    try {
+      profiles.push(validateProfile(p, `fun:${p.id}`));
+    } catch (e) {
+      issues.push({ file: `fun:${p.id}`, message: e instanceof Error ? e.message : String(e) });
     }
   }
   // Converted (real audio) banks first, then alphabetical by the name users see.

@@ -32,12 +32,12 @@ test('numbers are parsed strictly; NaN, Infinity, negatives and out-of-range val
   assert.deepEqual(codes(spec({ displacementL: Number.NaN })), ['displacementL:notNumber']);
   assert.deepEqual(codes(spec({ maxRPM: Number.POSITIVE_INFINITY })), ['maxRPM:notNumber']);
   assert.deepEqual(codes(spec({ displacementL: -2 })), ['displacementL:range']);
-  assert.deepEqual(codes(spec({ maxRPM: 20000 })), ['maxRPM:range']);
-  assert.deepEqual(codes(spec({ displacementL: 5.05 })), ['displacementL:decimals']);
+  assert.deepEqual(codes(spec({ maxRPM: 25000 })), ['maxRPM:range']);
+  assert.deepEqual(codes(spec({ displacementL: 5.055 })), ['displacementL:decimals']);
 });
 
 test('idle must stay well below the max RPM', () => {
-  assert.deepEqual(codes(spec({ idleRPM: 1500, maxRPM: 4000 })), ['idleRPM:revRange']);
+  assert.deepEqual(codes(spec({ idleRPM: 1500, maxRPM: 1900 })), ['idleRPM:revRange']);
   assert.deepEqual(codes(spec({ idleRPM: 1000, maxRPM: 4000 })), []);
 });
 

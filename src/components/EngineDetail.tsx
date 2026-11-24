@@ -7,6 +7,7 @@ import { getProfile } from '../profiles/registry.ts';
 import { FavoriteButton, LockNote, PreviewButton, SoundBadge, TierBadge } from './GarageParts.tsx';
 import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { Sheet } from './Sheet.tsx';
+import { canCreateCustomProfile } from '../entitlements/entitlements.ts';
 
 /** Engine details inside the Garage: full technical data and the main actions. */
 export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
@@ -23,8 +24,9 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
   const allowed = session.canSelect(p.id);
   const locked = !item.custom && session.engineLock(p.id) !== null;
   const upgrade = useUpgrade();
+  const edited = !item.custom && canCreateCustomProfile(s.entitlements) && s.customEngines.some((c) => c.overrides === p.id);
   const borrowed = item.custom && p.audio.converted ? getProfile(p.source.soundName) : undefined;
-  const sound = borrowed ? t('garage.spec.soundBorrowed', { name: engineTitle(borrowed) }) : p.audio.converted ? t('garage.spec.soundReal') : t('garage.spec.soundSynth');
+  const sound = borrowed ? t('garage.spec.soundBorrowed', { name: engineTitle(borrowed) }) : p.audio.converted ? t('garage.spec.soundReal') : p.audio.voice ? t('garage.spec.soundVoice') : t('garage.spec.soundSynth');
 
   const rows: [string, string][] = [
     [t('garage.layout'), engineLayout(p, t)],
@@ -53,6 +55,7 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
           <TierBadge item={item} />
           <span className="badge">{engineLayout(p, t)}</span>
           <SoundBadge item={item} />
+          {edited && <span className="badge badge-edited">{t('studio.editedBadge')}</span>}
           <FavoriteButton id={p.id} name={item.title} />
         </div>
         <p className="detail-subtitle">{engineSubtitle(p, t)}</p>
@@ -71,8 +74,16 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
         <div className="detail-actions detail-studio">
           {item.custom
             ? <button className="btn" onClick={onEdit} data-action="edit">{t('studio.editLong')}</button>
-            : <button className="btn" onClick={onUseAsBase} data-action="use-as-base">{t('studio.useAsBase')}</button>}
+            : (
+              <>
+                <button className="btn btn-studio" onClick={onUseAsBase} data-action="edit-builtin">
+                  ✎ {t('studio.editBuiltin')}{!canCreateCustomProfile(s.entitlements) && <span className="tier-badge tier-pro seg-badge">{t('settings.pro')}</span>}
+                </button>
+                {edited && <button className="btn" onClick={() => void session.restoreOriginal(p.id)} data-action="restore">{t('studio.restore')}</button>}
+              </>
+            )}
         </div>
+        {edited && <p className="sheet-hint" data-testid="edited-note">{t('studio.editedNote')}</p>}
         {!allowed && <p className="setting-lock">{t('studio.lockedDrive')}</p>}
         <LockNote item={item} />
         {s.ignition !== 'off' && <p className="sheet-hint">{t('garage.previewOff')}</p>}

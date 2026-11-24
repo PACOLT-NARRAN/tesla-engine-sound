@@ -1,6 +1,8 @@
 import type { EngineProfile } from '../types/profile.ts';
 import { hashString } from '../utils/math.ts';
 import { synthesizeEngineLoop, synthesizePop } from './placeholder/synthEngine.ts';
+import { renderVoiceBands, type RenderedBand } from './placeholder/voiceSynth.ts';
+import { getVoice } from './placeholder/voices.ts';
 import type { AudioManifest, LoopSample, SoundBank } from './types.ts';
 
 const PLACEHOLDER_RATE = 32000;
@@ -30,7 +32,13 @@ export class SoundBankLoader {
     const key = bankCacheKey(profile);
     let p = this.cache.get(key);
     if (!p) {
-      p = (profile.audio.converted ? this.loadConverted(profile) : Promise.resolve(buildPlaceholderBank(profile)));
+      p = profile.audio.converted
+        ? this.loadConverted(profile)
+        : profile.audio.voice && getVoice(profile.audio.voice)
+          ? voiceRenderer.render(profile)
+            .catch(() => renderVoiceSync(profile)) // worker blocked: render here once
+            .then((bands) => voiceBankFromBands(profile, bands))
+          : Promise.resolve(buildPlaceholderBank(profile));
       p.catch(() => this.cache.delete(key));
       this.cache.set(key, p);
     }
@@ -105,6 +113,7 @@ export class SoundBankLoader {
  */
 export function bankCacheKey(p: EngineProfile): string {
   if (p.audio.converted) return `bank:${p.audio.manifest}`;
+  if (p.audio.voice) return `voice:${p.audio.voice}:${p.idleRPM}:${p.limiterRPM}`;
   const t = p.audio.placeholderTone;
   return `synth:${p.id}:${p.cylinders}:${p.aspiration}:${p.idleRPM}:${p.limiterRPM}:${t.brightness}:${t.roughness}`;
 }
@@ -122,6 +131,7 @@ function placeholderPops(profile: EngineProfile): AudioBuffer[] {
 
 /** TODO(placeholder-audio): procedural bank used until the profile's .awc has been converted. */
 export function buildPlaceholderBank(profile: EngineProfile): SoundBank {
+  if (profile.audio.voice && getVoice(profile.audio.voice)) return voiceBankFromBands(profile, renderVoiceSync(profile));
   const seed = hashString(profile.id);
   const lo = profile.idleRPM;
   const hi = profile.limiterRPM;
@@ -151,3 +161,79 @@ export function buildPlaceholderBank(profile: EngineProfile): SoundBank {
   const pops = placeholderPops(profile);
   return { profileId: profile.id, kind: 'placeholder', bands, pops, blowoff: [], startup: null, shutdown: null, bytes };
 }
+
+/** Fun-pack engine: wraps the rendered voice bands (worker or main thread) as a sound bank. */
+export function voiceBankFromBands(profile: EngineProfile, rendered: readonly RenderedBand[]): SoundBank {
+  let bytes = 0;
+  const bands = rendered.map((b) => {
+    const onBuf = toBuffer(b.on, PLACEHOLDER_RATE);
+    const offBuf = toBuffer(b.off, PLACEHOLDER_RATE);
+    bytes += (b.on.length + b.off.length) * 4;
+    return {
+      rpm: b.rpm,
+      on: { buffer: onBuf, loopStart: 0, loopEnd: onBuf.duration },
+      off: { buffer: offBuf, loopStart: 0, loopEnd: offBuf.duration },
+    };
+  });
+  const pops = profile.audio.overrunPops > 0 || profile.audio.shiftBark > 0 ? placeholderPops(profile) : [];
+  return { profileId: profile.id, kind: 'placeholder', bands, pops, blowoff: [], startup: null, shutdown: null, bytes };
+}
+
+/** Renders a voice on the main thread (fallback when Web Workers are unavailable). */
+export function renderVoiceSync(profile: EngineProfile): RenderedBand[] {
+  const recipe = getVoice(profile.audio.voice);
+  if (!recipe || !profile.audio.voice) throw new Error(`unknown voice ${profile.audio.voice}`);
+  return renderVoiceBands(recipe, profile.audio.voice, profile.idleRPM, profile.limiterRPM, PLACEHOLDER_RATE, PLACEHOLDER_BANDS);
+}
+
+/** Off-main-thread voice rendering with a lazily started worker; falls back to the main thread. */
+class VoiceRenderer {
+  private worker: Worker | null = null;
+  private failed = false;
+  private seq = 0;
+  private pending = new Map<number, { resolve: (b: RenderedBand[]) => void; reject: (e: Error) => void }>();
+
+  render(profile: EngineProfile): Promise<RenderedBand[]> {
+    const w = this.ensure();
+    if (!w) return new Promise((resolve, reject) => setTimeout(() => {
+      try { resolve(renderVoiceSync(profile)); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
+    }, 0));
+    const req = ++this.seq;
+    return new Promise((resolve, reject) => {
+      this.pending.set(req, { resolve, reject });
+      w.postMessage({ req, voice: profile.audio.voice, idle: profile.idleRPM, limiter: profile.limiterRPM, sampleRate: PLACEHOLDER_RATE, bands: PLACEHOLDER_BANDS });
+    });
+  }
+
+  private ensure(): Worker | null {
+    if (this.worker || this.failed) return this.worker;
+    if (typeof Worker === 'undefined') {
+      this.failed = true;
+      return null;
+    }
+    try {
+      const w = new Worker(new URL('./placeholder/voiceWorker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<{ req: number; bands?: RenderedBand[]; error?: string }>) => {
+        const p = this.pending.get(e.data.req);
+        if (!p) return;
+        this.pending.delete(e.data.req);
+        if (e.data.bands) p.resolve(e.data.bands);
+        else p.reject(new Error(e.data.error ?? 'voice render failed'));
+      };
+      w.onerror = () => {
+        // Worker could not start (blocked): finish the waiting requests on the main thread.
+        this.failed = true;
+        this.worker = null;
+        w.terminate();
+        for (const [, p] of this.pending) p.reject(new Error('voice worker failed'));
+        this.pending.clear();
+      };
+      this.worker = w;
+    } catch {
+      this.failed = true;
+    }
+    return this.worker;
+  }
+}
+
+export const voiceRenderer = new VoiceRenderer();

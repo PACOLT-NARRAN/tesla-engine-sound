@@ -738,6 +738,20 @@ export const en = {
   'studio.editedNote': 'You have edited this engine for yourself. RESTORE ORIGINAL brings the factory version back.',
   'studio.baseHint': 'You are editing {name}. OVERWRITE FOR ME changes this engine just for you; SAVE AS NEW adds it to the Garage as a new engine and keeps the original.',
   'studio.soundVoices': 'REVLINE synth voices (fun packs)',
+  'origin.music': 'Music',
+  'garage.soundMusic': '♪ LIVE MUSIC',
+  'garage.spec.soundMusic': 'Generative music composed live by your driving',
+  'garage.spec.music': 'How it plays',
+  'garage.spec.musicHow': 'Speed = tempo and instruments · throttle = energy · braking = muffled · steering = left/right and bells · REV = build-up and drop · shifting = new section',
+  'engine.subtitleMusic': 'Generative music · {lo}–{hi} BPM',
+  'status.soundMusic': 'SOUND · MUSIC',
+  'garage.tempo': 'Tempo (BPM)',
+  'garage.musicStyle': 'Style',
+  'musicStyle.synthwave': 'Synthwave',
+  'musicStyle.techno': 'Techno',
+  'musicStyle.lofi': 'Lo-fi hip hop',
+  'musicStyle.ambient': 'Ambient',
+  'musicStyle.epic': 'Film score',
 } as const;
 
 export type MessageKey = keyof typeof en;

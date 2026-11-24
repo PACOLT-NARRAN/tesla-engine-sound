@@ -1,5 +1,5 @@
 import type { MotionSource, MotionSourceStatus, RawFix } from '../types/motion.ts';
-import { offsetNorth } from '../utils/geo.ts';
+import { offsetHeading, offsetNorth } from '../utils/geo.ts';
 import { createCursor, stepScenario, type DemoScenario } from './demoScenarios.ts';
 
 export interface DemoOptions {
@@ -34,6 +34,8 @@ export class DemoMotionSource implements MotionSource {
     let lat = 50.0755;
     let lon = 14.4378;
     let last = Date.now();
+    let heading = 0;
+    let tRoad = 0;
     const period = 1000 / this.opts.rateHz;
     onStatus({ kind: 'active' });
     this.timer = setInterval(() => {
@@ -41,7 +43,10 @@ export class DemoMotionSource implements MotionSource {
       const dt = Math.min(0.5, (now - last) / 1000);
       last = now;
       const v = stepScenario(this.scenario, cursor, dt);
-      const moved = offsetNorth(lat, lon, v * dt);
+      // A gently winding road (left and right bends) so steering features can be heard.
+      tRoad += dt;
+      if (v > 3) heading = (heading + 22 * Math.sin(tRoad / 5) * dt + 360) % 360;
+      const moved = offsetHeading(lat, lon, v * dt, heading);
       lat = moved.lat;
       lon = moved.lon;
       const n = this.opts.noise;
@@ -53,7 +58,7 @@ export class DemoMotionSource implements MotionSource {
         longitude: posJitter.lon,
         accuracy: n ? 4 + Math.abs(gauss()) * 4 : 3,
         speed: this.opts.withoutCoordsSpeed ? null : noisySpeed,
-        heading: 0,
+        heading,
       });
     }, period);
   }

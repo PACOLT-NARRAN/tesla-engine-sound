@@ -386,7 +386,7 @@ export class EngineSession {
    */
   async selectRandomEngine(random: () => number = Math.random): Promise<string | null> {
     const st = this.store.get();
-    const pool = randomEnginePool(this.allProfiles().map((p) => p.id), st.profileId, (id) => canUseEngine(st.entitlements, this.requirement(id)));
+    const pool = randomEnginePool(this.allProfiles().filter((p) => !p.audio.music).map((p) => p.id), st.profileId, (id) => canUseEngine(st.entitlements, this.requirement(id)));
     if (pool.length === 0) return null;
     const id = pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
     if (id === undefined) return null;
@@ -957,6 +957,7 @@ export class EngineSession {
     this.lastTick = t;
     const motion = this.estimator.sample(Date.now());
     const events = this.drivetrain.update(dt, motion);
+    this.audio.setTurnRate(motion.turnRate);
     this.audio.update(this.drivetrain.state, events);
     this.telemetry.motion = motion;
     this.telemetry.drivetrain = this.drivetrain.state;

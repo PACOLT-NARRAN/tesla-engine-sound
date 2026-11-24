@@ -1,5 +1,5 @@
 import type { FixRejectReason, FixResult, MotionQuality, MotionState, RawFix, SpeedSource } from '../types/motion.ts';
-import { haversineDistance } from '../utils/geo.ts';
+import { bearingDeg, haversineDistance, headingDelta } from '../utils/geo.ts';
 import { clamp, isFiniteNumber } from '../utils/math.ts';
 
 export interface MotionEstimatorConfig {
@@ -95,6 +95,10 @@ export class MotionEstimator {
   private lastReject: FixRejectReason | null = null;
   private accepted = 0;
   private rejected = 0;
+  /** Steering estimate: last heading (deg) with its time and position, and the smoothed turn rate. */
+  private heading: { deg: number; ts: number } | null = null;
+  private headingPos: Anchor | null = null;
+  private turnRate = 0;
 
   constructor(config: Partial<MotionEstimatorConfig> = {}) {
     this.cfg = { ...DEFAULT_MOTION_CONFIG, ...config };
@@ -117,6 +121,9 @@ export class MotionEstimator {
     this.lastReject = null;
     this.accepted = 0;
     this.rejected = 0;
+    this.heading = null;
+    this.headingPos = null;
+    this.turnRate = 0;
   }
 
   ingest(fix: RawFix): FixResult {
@@ -213,6 +220,7 @@ export class MotionEstimator {
     } else if (this.speed < c.stationaryEnterMs && measured < c.stationaryExitMs) {
       this.stationary = true;
     }
+    this.updateHeading(fix, measured);
     if (!this.stationary) this.restAnchor = null;
     else if (!this.restAnchor) this.restAnchor = this.anchor;
     if (this.stationary) {
@@ -258,9 +266,42 @@ export class MotionEstimator {
         accuracy: this.lastAccuracy,
         lastRejectReason: this.lastReject,
       },
+      turnRate: Number.isFinite(fixAge) && fixAge > 2 ? this.turnRate * Math.exp(-(fixAge - 2) * 1.5) : this.turnRate,
       acceptedFixes: this.accepted,
       rejectedFixes: this.rejected,
     };
+  }
+
+  /**
+   * Turn rate (deg/s, + = right) from the GPS course: coords.heading when the platform gives it,
+   * else the bearing between positions at least 5 m apart. Zero when parked.
+   */
+  private updateHeading(fix: RawFix, measured: number): void {
+    if (this.stationary || this.speed < 2) {
+      this.heading = null;
+      this.headingPos = null;
+      this.turnRate = 0;
+      return;
+    }
+    let deg: number | null = null;
+    if (isFiniteNumber(fix.heading) && fix.heading >= 0 && measured > 2) deg = fix.heading % 360;
+    else {
+      const hp = this.headingPos;
+      if (!hp) {
+        this.headingPos = { timestamp: fix.timestamp, latitude: fix.latitude, longitude: fix.longitude, accuracy: null };
+        return;
+      }
+      if (haversineDistance(hp.latitude, hp.longitude, fix.latitude, fix.longitude) < 5) return;
+      deg = bearingDeg(hp.latitude, hp.longitude, fix.latitude, fix.longitude);
+    }
+    this.headingPos = { timestamp: fix.timestamp, latitude: fix.latitude, longitude: fix.longitude, accuracy: null };
+    const prev = this.heading;
+    this.heading = { deg, ts: fix.timestamp };
+    if (!prev) return;
+    const dt = (fix.timestamp - prev.ts) / 1000;
+    if (dt <= 0 || dt > 4) return;
+    const rate = clamp(headingDelta(prev.deg, deg) / dt, -90, 90);
+    this.turnRate += (rate - this.turnRate) * 0.6;
   }
 
   private reject(reason: FixRejectReason): FixResult {

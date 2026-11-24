@@ -33,6 +33,8 @@ export interface MotionState {
   /** Filtered longitudinal acceleration, m/s². Negative = decelerating. */
   accel: number;
   stationary: boolean;
+  /** Steering: GPS course change, deg/s (+ = turning right), 0 when parked or unknown. */
+  turnRate: number;
   quality: MotionQuality;
   /** Seconds since the last accepted fix (Infinity before the first). */
   fixAge: number;

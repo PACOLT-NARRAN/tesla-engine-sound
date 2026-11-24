@@ -157,6 +157,23 @@ export const ENGINE_PACKS: readonly EnginePack[] = [
     version: '1.0',
     requiresPro: false,
   },
+  {
+    id: 'drive-music',
+    name: { en: 'DRIVE MUSIC', cs: 'HUDBA JÍZDY' },
+    description: {
+      en: 'Your drive composes the music: speed sets the tempo and layers, the throttle the energy, braking sinks the sound and steering moves it left and right. Five styles.',
+      cs: 'Hudbu skládá tvoje jízda: rychlost určuje tempo a nástroje, plyn energii, brzdění hudbu ztlumí a zatáčení ji posouvá doleva a doprava. Pět stylů.',
+    },
+    cover: { from: '#0b1f3a', to: '#05060d', accent: '#4fd1ff' },
+    highlights: [
+      { en: 'Synthwave, techno, lo-fi, ambient, film score', cs: 'Synthwave, techno, lo-fi, ambient, filmová hudba' },
+      { en: 'Hold REV to build up, release for the drop', cs: 'Podrž REV pro gradaci, pusť a přijde drop' },
+      { en: 'Gear shifts change sections and play fills', cs: 'Řazení mění části skladby a hraje přechody' },
+    ],
+    priceEur: 4.99,
+    version: '1.0',
+    requiresPro: false,
+  },
 ];
 
 export function getPack(id: string | null, packs: readonly EnginePack[] = ENGINE_PACKS): EnginePack | undefined {

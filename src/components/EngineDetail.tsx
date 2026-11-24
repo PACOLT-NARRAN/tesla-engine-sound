@@ -26,9 +26,13 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
   const upgrade = useUpgrade();
   const edited = !item.custom && canCreateCustomProfile(s.entitlements) && s.customEngines.some((c) => c.overrides === p.id);
   const borrowed = item.custom && p.audio.converted ? getProfile(p.source.soundName) : undefined;
-  const sound = borrowed ? t('garage.spec.soundBorrowed', { name: engineTitle(borrowed) }) : p.audio.converted ? t('garage.spec.soundReal') : p.audio.voice ? t('garage.spec.soundVoice') : t('garage.spec.soundSynth');
+  const sound = borrowed ? t('garage.spec.soundBorrowed', { name: engineTitle(borrowed) }) : p.audio.converted ? t('garage.spec.soundReal') : p.audio.music ? t('garage.spec.soundMusic') : p.audio.voice ? t('garage.spec.soundVoice') : t('garage.spec.soundSynth');
 
-  const rows: [string, string][] = [
+  const rows: [string, string][] = p.audio.music ? [
+    [t('garage.spec.sound'), sound],
+    [t('garage.spec.music'), t('garage.spec.musicHow')],
+    [t('garage.spec.tier'), t(`garage.tier.${item.tier}`)],
+  ] : [
     [t('garage.layout'), engineLayout(p, t)],
     [t('garage.spec.cylinders'), String(p.cylinders)],
     [t('garage.displacement'), p.displacementL === null ? '—' : t('engine.liters', { value: t.num(p.displacementL, 1, 1) })],
@@ -72,7 +76,7 @@ export function EngineDetail({ item, onClose, onDrive, onEdit, onUseAsBase }: {
           )}
         </div>
         <div className="detail-actions detail-studio">
-          {item.custom
+          {p.audio.music ? null : item.custom
             ? <button className="btn" onClick={onEdit} data-action="edit">{t('studio.editLong')}</button>
             : (
               <>

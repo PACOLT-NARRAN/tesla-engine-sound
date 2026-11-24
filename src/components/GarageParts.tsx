@@ -54,6 +54,7 @@ export function PreviewButton({ id, name }: { id: string; name: string }) {
 export function SoundBadge({ item }: { item: GarageItem }) {
   const t = useT();
   const p = item.profile;
+  if (p.audio.music) return <span className="badge badge-music">{t('garage.soundMusic')}</span>;
   if (p.audio.voice) return <span className="badge badge-voice">{t('garage.soundVoice')}</span>;
   if (!p.audio.converted) return <span className="badge badge-synth">{t('engines.synthPreview')}</span>;
   if (item.custom) return <span className="badge badge-real">{t('garage.soundBorrowed')}</span>;

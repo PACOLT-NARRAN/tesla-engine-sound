@@ -29,7 +29,8 @@ function gpsChip(s: SessionState): { text: MessageKey; tone: Tone } {
 
 function audioChip(s: SessionState): { text: MessageKey; tone: Tone } {
   switch (s.audioStatus) {
-    case 'running': return { text: s.bankKind === 'placeholder' ? 'status.soundSynth' : 'status.sound', tone: 'ok' };
+    // DRIVE MUSIC pack "engines" (ids music-*) play generative music.
+    case 'running': return { text: s.activeEngine.id.startsWith('music-') ? 'status.soundMusic' : s.bankKind === 'placeholder' ? 'status.soundSynth' : 'status.sound', tone: 'ok' };
     case 'loading': return { text: 'status.loading', tone: 'warn' };
     case 'suspended': return { text: 'status.soundPaused', tone: 'bad' };
     case 'error': return { text: 'status.noSound', tone: 'bad' };

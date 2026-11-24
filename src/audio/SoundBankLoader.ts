@@ -32,7 +32,9 @@ export class SoundBankLoader {
     const key = bankCacheKey(profile);
     let p = this.cache.get(key);
     if (!p) {
-      p = profile.audio.converted
+      p = profile.audio.music
+        ? Promise.resolve(emptyBank(profile))
+        : profile.audio.converted
         ? this.loadConverted(profile)
         : profile.audio.voice && getVoice(profile.audio.voice)
           ? voiceRenderer.render(profile)
@@ -113,6 +115,7 @@ export class SoundBankLoader {
  */
 export function bankCacheKey(p: EngineProfile): string {
   if (p.audio.converted) return `bank:${p.audio.manifest}`;
+  if (p.audio.music) return `music:${p.audio.music}`;
   if (p.audio.voice) return `voice:${p.audio.voice}:${p.idleRPM}:${p.limiterRPM}`;
   const t = p.audio.placeholderTone;
   return `synth:${p.id}:${p.cylinders}:${p.aspiration}:${p.idleRPM}:${p.limiterRPM}:${t.brightness}:${t.roughness}`;
@@ -237,3 +240,8 @@ class VoiceRenderer {
 }
 
 export const voiceRenderer = new VoiceRenderer();
+
+/** DRIVE MUSIC "engines" have no loops: MusicEngine generates the sound. */
+export function emptyBank(profile: EngineProfile): SoundBank {
+  return { profileId: profile.id, kind: 'placeholder', bands: [], pops: [], blowoff: [], startup: null, shutdown: null, bytes: 0 };
+}

@@ -15,6 +15,7 @@ import { FavoriteButton, LockNote, PreviewButton, SoundBadge, TierBadge } from '
 import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { SoundStudio } from './SoundStudio.tsx';
 import { getProfile } from '../profiles/registry.ts';
+import { getMusicStyle } from '../audio/music/musicStyles.ts';
 import { CommunityPanel } from './CommunityPanel.tsx';
 
 /** Filter chips, grouped with a small gap between groups. */
@@ -211,6 +212,7 @@ function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: 
   const p = item.profile;
   const selected = p.id === s.profileId;
   const name = item.title;
+  const music = getMusicStyle(p.audio.music);
   const allowed = session.canSelect(p.id);
   const locked = !item.custom && session.engineLock(p.id) !== null;
   const upgrade = useUpgrade();
@@ -227,12 +229,19 @@ function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: 
         <small className="engine-subtitle">{engineSubtitle(p, t)}</small>
         <p>{engineDescription(p, t)}</p>
       </button>
+      {music ? (
+        <dl className="g-specs">
+          <div><dt>{t('garage.tempo')}</dt><dd>{music.bpm[0]}–{music.bpm[1]}</dd></div>
+          <div className="g-spec-wide"><dt>{t('garage.musicStyle')}</dt><dd>{t.dyn(`musicStyle.${music.id}`) ?? music.id}</dd></div>
+        </dl>
+      ) : (
       <dl className="g-specs">
         <div><dt>{t('garage.displacement')}</dt><dd>{p.displacementL === null ? '—' : t('engine.liters', { value: t.num(p.displacementL, 1, 1) })}</dd></div>
         <div><dt>{t('garage.maxRpm')}</dt><dd>{t.num(p.redlineRPM)}</dd></div>
         <div><dt>{t('garage.gears')}</dt><dd>{p.gearbox.gearRatios.length}</dd></div>
         <div className="g-spec-wide"><dt>{t('garage.induction')}</dt><dd>{engineInduction(p, t)}</dd></div>
       </dl>
+      )}
       <div className="g-card-actions">
         <PreviewButton id={p.id} name={name} />
         {item.custom && <button className="btn" onClick={onEdit} aria-label={t('studio.editAria', { name })} data-action="edit">{t('studio.edit')}</button>}

@@ -10,7 +10,7 @@ export type LocalizedText = Readonly<Record<Language, string>>;
 /** Commercial tier (see TIERS in src/profiles/catalog.ts). */
 export type EngineTier = 'free' | 'pro' | 'pack';
 
-export type EngineOrigin = 'italian' | 'german' | 'american' | 'japanese' | 'british' | 'generic' | 'retro' | 'moto' | 'aviation' | 'rail' | 'fantasy';
+export type EngineOrigin = 'italian' | 'german' | 'american' | 'japanese' | 'british' | 'generic' | 'retro' | 'moto' | 'aviation' | 'rail' | 'fantasy' | 'music';
 
 export interface EngineCatalogEntry {
   /** Stable engine id = profile id = audio bank folder. */

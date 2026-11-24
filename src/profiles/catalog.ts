@@ -1,5 +1,6 @@
 import type { EngineCatalogEntry, EngineOrigin, EngineTier, LocalizedText } from '../types/catalog.ts';
 import { FUN_CATALOG } from './funEngines.ts';
+import { MUSIC_CATALOG } from './musicEngines.ts';
 
 const entry = (
   id: string,
@@ -56,6 +57,7 @@ export const ENGINE_CATALOG: readonly EngineCatalogEntry[] = [
   entry('p60b40', 'RACING V8', 'german', 'High-revving racing V8.', 'Vysokootáčkový závodní V8.', ['race']),
   // Fun packs (REVLINE voice synthesiser), see funEngines.ts.
   ...FUN_CATALOG,
+  ...MUSIC_CATALOG,
 ];
 
 const BY_ID: ReadonlyMap<string, EngineCatalogEntry> = new Map(ENGINE_CATALOG.map((e) => [e.id, e]));

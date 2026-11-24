@@ -5,6 +5,7 @@ import { clamp } from '../utils/math.ts';
 import { bandPlaybackRate, bandWeights, engineLevel, loadGains, soundRpm, toneCutoffHz } from './layerMix.ts';
 import type { LoopSample, SoundBank } from './types.ts';
 import { OutputStage } from './outputStage.ts';
+import { MusicEngine, type MusicDebugInfo } from './music/MusicEngine.ts';
 
 /** Time constants (seconds) for setTargetAtTime: short enough to feel instant, long enough to never click. */
 const TC_RATE = 0.025;
@@ -37,6 +38,8 @@ export interface AudioDebugInfo {
   masterGain: number;
   bankKind: SoundBank['kind'] | 'none';
   layers: Array<{ rpm: number; weight: number; rate: number; on: number; off: number }>;
+  /** DRIVE MUSIC state when a music "engine" plays. */
+  music: MusicDebugInfo | null;
 }
 
 /**
@@ -88,6 +91,10 @@ export class EngineAudioEngine {
   private stateListener: ((s: AudioContextState) => void) | null = null;
   /** Drive Profile: multiplier on parameter smoothing, and off-throttle (engine braking) level. */
   private smoothing = 1;
+  /** DRIVE MUSIC player (music pack "engines"), null for real engines. */
+  private music: MusicEngine | null = null;
+  private turnRate = 0;
+  private nitroOn = false;
   private offLevel = 1;
 
   /** Drive Profile sound behaviour: transition smoothing and engine-braking loudness. */
@@ -174,6 +181,16 @@ export class EngineAudioEngine {
     }
     if (old) this.retireVoice(old, 0.12);
     this.voice = voice;
+    // DRIVE MUSIC: the bank is empty, the music engine makes the sound.
+    const style = profile.audio.music;
+    if (this.music && this.music.style.id !== style) {
+      this.music.stop(now);
+      this.music = null;
+    }
+    if (style && !this.music) {
+      this.music = new MusicEngine(ctx, this.master, style, Math.floor(Math.random() * 1e9));
+      this.music.start(now);
+    }
     this.master.gain.setTargetAtTime(this.volume, now, 0.05);
   }
 
@@ -185,6 +202,7 @@ export class EngineAudioEngine {
 
   /** NITRO button held / released: the gas purge hiss bursts in and tails off. */
   setNitro(on: boolean): void {
+    this.nitroOn = on;
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     this.nitroGain.gain.cancelScheduledValues(now);
@@ -197,8 +215,17 @@ export class EngineAudioEngine {
     }
   }
 
+  /** Steering from GPS headings (deg/s, + = right); used by DRIVE MUSIC. */
+  setTurnRate(degPerS: number): void {
+    this.turnRate = Number.isFinite(degPerS) ? degPerS : 0;
+  }
+
   stop(): void {
     if (this.ctx) this.nitroGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    if (this.ctx && this.music) {
+      this.music.stop(this.ctx.currentTime);
+      this.music = null;
+    }
     if (!this.ctx || !this.voice) return;
     this.boost = 0;
     this.turboGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
@@ -216,6 +243,7 @@ export class EngineAudioEngine {
     if (!ctx || !v || !p) return;
     const now = ctx.currentTime;
     const k = this.smoothing;
+    this.music?.update(now, s, events, this.turnRate, this.nitroOn);
 
     // RPM bands: crossfade + pitch (in the bank's own RPM scale).
     const bankRpm = soundRpm(s.rpm, p);
@@ -293,6 +321,7 @@ export class EngineAudioEngine {
             .map((l) => ({ rpm: Math.round(l.rpm), weight: l.lastWeight, rate: l.lastRate, on: v.onBus.gain.value * l.lastWeight, off: v.offBus.gain.value * l.lastWeight }))
             .filter((l) => l.weight > 0.01)
         : [],
+      music: this.music?.debugInfo() ?? null,
     };
   }
 

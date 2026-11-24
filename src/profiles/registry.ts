@@ -2,6 +2,7 @@ import type { EngineProfile } from '../types/profile.ts';
 import { engineTitle } from './presentation.ts';
 import { validateProfile } from './schema.ts';
 import { FUN_PROFILES } from './funEngines.ts';
+import { MUSIC_PROFILES } from './musicEngines.ts';
 
 /**
  * Every JSON file in ./engines is an engine profile. Adding an engine = dropping in
@@ -25,7 +26,7 @@ function load(): { profiles: EngineProfile[]; issues: ProfileLoadIssue[] } {
       console.warn('[profiles] skipped', file, e);
     }
   }
-  for (const p of FUN_PROFILES) {
+  for (const p of [...FUN_PROFILES, ...MUSIC_PROFILES]) {
     try {
       profiles.push(validateProfile(p, `fun:${p.id}`));
     } catch (e) {

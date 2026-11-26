@@ -34,7 +34,7 @@ import { startTickClock, type StopClock } from './tickClock.ts';
 import { updateMediaSession } from './mediaSession.ts';
 import { randomEnginePool } from './randomEngine.ts';
 import { engineTitle } from '../profiles/presentation.ts';
-import { layoutGroup } from '../garage/garage.ts';
+import { GARAGE_VIEW_SCHEMA, layoutGroup, type GarageView } from '../garage/garage.ts';
 import { STATISTICS_SCHEMA, StatsTracker, dayKey, emptyStatistics, type Statistics } from '../engagement/stats.ts';
 import { ACHIEVEMENTS_SCHEMA, awardAchievements, type AchievementId, type AchievementState, type EngagementContext } from '../engagement/achievements.ts';
 import { USER_PROFILE_SCHEMA, cleanText, type UserProfile } from '../engagement/profileCard.ts';
@@ -644,7 +644,7 @@ export class EngineSession {
     if (scope !== 'all') return;
     this.storage.clearAll([
       this.settingsSchema.key, FAVORITES_SCHEMA.key, RECENT_SCHEMA.key, DEV_OPTIONS_SCHEMA.key, CUSTOM_ENGINES_SCHEMA.key,
-      STATISTICS_SCHEMA.key, ACHIEVEMENTS_SCHEMA.key, USER_PROFILE_SCHEMA.key, COMMUNITY_SCHEMA.key,
+      STATISTICS_SCHEMA.key, ACHIEVEMENTS_SCHEMA.key, USER_PROFILE_SCHEMA.key, COMMUNITY_SCHEMA.key, GARAGE_VIEW_SCHEMA.key,
     ]);
     this.store.set({ userProfile: USER_PROFILE_SCHEMA.defaults(), community: COMMUNITY_SCHEMA.defaults() });
     // Signs out on this device and asks the server to end the session (nothing else is stored online).
@@ -971,6 +971,17 @@ export class EngineSession {
       speed: motion.speed, quality: motion.quality, rpm: this.drivetrain.state.rpm, now: Date.now(),
     });
     if (milestones.length > 0 || t - this.lastStatsSave >= STATS_SAVE_MS) this.saveStats(true);
+  }
+
+  // --- Garage view (tabs and hide choices) ---------------------------------------------
+
+  /** Last Garage tab and the user's hide choices (remembered on this device). */
+  garageView(): GarageView {
+    return this.storage.load(GARAGE_VIEW_SCHEMA).value;
+  }
+
+  setGarageView(v: GarageView): void {
+    this.storage.save(GARAGE_VIEW_SCHEMA, v);
   }
 
   // --- Profile & statistics ------------------------------------------------------------

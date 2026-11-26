@@ -32,8 +32,8 @@ export function DebugOverlay() {
       `rpm            ${Math.round(d.rpm)}  target ${Math.round(d.targetRpm)}`,
       `audio ctx      ${a.contextState}  ${a.sampleRate} Hz  latency ${f(a.baseLatencyMs, 1)} ms  bank=${a.bankKind}`,
       `master gain    ${f(a.masterGain, 3)}`,
-      ...(a.music ? [`music          ${a.music.style}  ${a.music.bpm} BPM  notes=${a.music.notes}  cruise=${f(a.music.cruise)} push=${f(a.music.push)} brake=${f(a.music.brake)} turn=${f(a.music.turn)}`,
-        `  layers       ${Object.entries(a.music.layers).filter(([, on]) => on).map(([k]) => k).join(' ')}`] : []),
+      ...(a.music ? [`music          ${a.music.style}  ${a.music.bpm} BPM  gear=${a.music.gear}  notes=${a.music.notes}  cruise=${f(a.music.cruise)} push=${f(a.music.push)} brake=${f(a.music.brake)} turn=${f(a.music.turn)}`,
+        `  layers       ${Object.entries(a.music.layers).filter(([k, on]) => on && k !== 'gearVoices').map(([k]) => k).join(' ')} gearVoices=${a.music.layers.gearVoices}`] : []),
       `layers         ${a.layers.length === 0 ? '—' : ''}`,
       ...a.layers.map((l) => `  band ${String(l.rpm).padStart(5)}  w=${f(l.weight)}  rate=${f(l.rate, 3)}  on=${f(l.on)} off=${f(l.off)}`),
     ];

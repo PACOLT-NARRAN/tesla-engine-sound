@@ -1,6 +1,7 @@
 import type { Language } from '../i18n/index.ts';
 import type { EngineCatalogEntry, EngineTier } from '../types/catalog.ts';
 import type { EngineProfile } from '../types/profile.ts';
+import { asRecord, pickBool, pickEnum, type StoredSchema } from '../storage/storage.ts';
 
 /**
  * Pure Garage logic (no React, no registry import, so it is unit tested in Node):
@@ -120,14 +121,14 @@ export function sortItems(items: readonly GarageItem[], sort: GarageSort, lang: 
 }
 
 export interface GarageQuery {
-  filter: GarageFilter;
+  filter: GarageFilter | `pack:${string}`;
   query: string;
   sort: GarageSort;
 }
 
 /** Filter + search + sort. `textOf` returns the precomputed search text of an item. */
 export function queryGarage(items: readonly GarageItem[], q: GarageQuery, ctx: ListContext, textOf: (i: GarageItem) => string, lang: Language): GarageItem[] {
-  const hits = items.filter((i) => matchesFilter(i, q.filter, ctx) && matchesQuery(textOf(i), q.query));
+  const hits = items.filter((i) => (q.filter.startsWith('pack:') ? i.packId === q.filter.slice(5) : matchesFilter(i, q.filter as GarageFilter, ctx)) && matchesQuery(textOf(i), q.query));
   // Favorites / Last Used keep the user's own order unless another sort is chosen.
   if (q.sort === 'recommended' && (q.filter === 'favorites' || q.filter === 'recent')) {
     const order = q.filter === 'favorites' ? ctx.favorites : ctx.recent;
@@ -140,4 +141,78 @@ export function countByFilter(items: readonly GarageItem[], ctx: ListContext): R
   const out = Object.fromEntries(GARAGE_FILTERS.map((f) => [f, 0])) as Record<GarageFilter, number>;
   for (const i of items) for (const f of GARAGE_FILTERS) if (matchesFilter(i, f, ctx)) out[f]++;
   return out;
+}
+
+// --- Kinds, pack shortcuts and the user's "hide" choices (update 32) -----------------------
+
+/** Top-level Garage tabs: everything, real engines, fun sounds, music. */
+export const GARAGE_KINDS = ['all', 'engines', 'fun', 'music'] as const;
+export type GarageKind = (typeof GARAGE_KINDS)[number];
+
+export function itemKind(item: GarageItem): Exclude<GarageKind, 'all'> {
+  if (item.profile.audio.music) return 'music';
+  if (item.profile.id.startsWith('fun-')) return 'fun';
+  return 'engines';
+}
+
+/** Remembered Garage view: last tab and what the user chose to hide. */
+export interface GarageView {
+  kind: GarageKind;
+  /** Hide FREE engines (someone who never wants to scroll past them). */
+  hideFree: boolean;
+  /** Hide everything the user cannot drive yet (locked PRO / pack items). */
+  hideLocked: boolean;
+  /** Show the fun sounds / the music tracks in the "All" tab too. */
+  funInAll: boolean;
+  musicInAll: boolean;
+}
+
+export const DEFAULT_GARAGE_VIEW: GarageView = { kind: 'all', hideFree: false, hideLocked: false, funInAll: true, musicInAll: false };
+
+export const GARAGE_VIEW_SCHEMA: StoredSchema<GarageView> = {
+  key: 'revline.garageView.v1',
+  version: 1,
+  defaults: () => ({ ...DEFAULT_GARAGE_VIEW }),
+  sanitize: (data, d) => {
+    const r = asRecord(data);
+    return {
+      kind: pickEnum(r.kind, GARAGE_KINDS, d.kind),
+      hideFree: pickBool(r.hideFree, d.hideFree),
+      hideLocked: pickBool(r.hideLocked, d.hideLocked),
+      funInAll: pickBool(r.funInAll, d.funInAll),
+      musicInAll: pickBool(r.musicInAll, d.musicInAll),
+    };
+  },
+};
+
+/**
+ * Items visible under a tab with the user's hide choices. A search looks through every tab
+ * (so "jingle" is found from anywhere); the hide choices always apply.
+ */
+export function scopeItems(items: readonly GarageItem[], view: GarageView, searching: boolean, locked: (i: GarageItem) => boolean): GarageItem[] {
+  return items.filter((i) => {
+    if (view.hideFree && !i.custom && i.tier === 'free') return false;
+    if (view.hideLocked && !i.custom && locked(i)) return false;
+    if (searching) return true;
+    const k = itemKind(i);
+    if (view.kind === 'all') return k === 'engines' || (k === 'fun' && view.funInAll) || (k === 'music' && view.musicInAll);
+    return k === view.kind;
+  });
+}
+
+/** Pack shortcut filter: `pack:<id>`. */
+export type PackFilter = `pack:${string}`;
+export type AnyFilter = GarageFilter | PackFilter;
+
+export const isPackFilter = (f: AnyFilter): f is PackFilter => f.startsWith('pack:');
+
+export function matchesAnyFilter(item: GarageItem, f: AnyFilter, ctx: ListContext): boolean {
+  return isPackFilter(f) ? item.packId === f.slice(5) : matchesFilter(item, f, ctx);
+}
+
+/** Packs that have items in `items`, in the given order, with counts. */
+export function packChips(items: readonly GarageItem[], order: readonly string[]): Array<{ id: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const i of items) if (i.packId) counts.set(i.packId, (counts.get(i.packId) ?? 0) + 1);
+  return order.filter((id) => counts.has(id)).map((id) => ({ id, count: counts.get(id) ?? 0 }));
 }

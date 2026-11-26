@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  GARAGE_SORTS, buildItems, countByFilter, queryGarage, searchText,
-  type GarageFilter, type GarageItem, type GarageSort,
+  GARAGE_KINDS, GARAGE_SORTS, buildItems, countByFilter, packChips, queryGarage, scopeItems, searchText,
+  type AnyFilter, type GarageFilter, type GarageItem, type GarageKind, type GarageSort, type GarageView,
 } from '../garage/garage.ts';
+import { ENGINE_PACKS } from '../profiles/packs.ts';
 import { searchLabels } from '../garage/labels.ts';
 import { useSession, useSessionState } from '../hooks/SessionContext.ts';
 import { useT } from '../i18n/useT.ts';
@@ -16,9 +17,10 @@ import { useUpgrade } from '../hooks/UpgradeContext.ts';
 import { SoundStudio } from './SoundStudio.tsx';
 import { getProfile } from '../profiles/registry.ts';
 import { getMusicStyle } from '../audio/music/musicStyles.ts';
+import { getPack } from '../profiles/packs.ts';
 import { CommunityPanel } from './CommunityPanel.tsx';
 
-/** Filter chips, grouped with a small gap between groups. */
+/** Filter chips of the "All" and "Engines" tabs, grouped with a small gap between groups. */
 const FILTER_GROUPS: readonly (readonly GarageFilter[])[] = [
   ['all', 'favorites', 'recent'],
   ['free', 'pro', 'pack'],
@@ -26,6 +28,9 @@ const FILTER_GROUPS: readonly (readonly GarageFilter[])[] = [
   ['v', 'inline', 'boxer', 'rotary'],
   ['custom'],
 ];
+/** Fun / Music tabs: the basic chips, then one shortcut chip per pack. */
+const BASIC_GROUP: readonly GarageFilter[] = ['all', 'favorites', 'recent'];
+const PACK_ORDER = ENGINE_PACKS.map((p) => p.id);
 /**
  * REVLINE Garage: browse, search, filter, preview and select engines. Full-screen layer over
  * the Drive screen, so the running engine, audio and GPS are never interrupted.
@@ -34,7 +39,18 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const session = useSession();
   const s = useSessionState();
   const t = useT();
-  const [filter, setFilter] = useState<GarageFilter>('all');
+  const [filter, setFilter] = useState<AnyFilter>('all');
+  const [view, setViewState] = useState<GarageView>(() => session.garageView());
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const setView = (patch: Partial<GarageView>) => {
+    const next = { ...view, ...patch };
+    setViewState(next);
+    session.setGarageView(next);
+  };
+  const setKind = (kind: GarageKind) => {
+    setView({ kind });
+    setFilter('all');
+  };
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<GarageSort>('recommended');
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -46,8 +62,15 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const items = useMemo(() => buildItems(session.allProfiles(), getCatalogEntry), [session, s.customEngines]);
   const texts = useMemo(() => new Map(items.map((i) => [i, searchText(i, searchLabels(i))])), [items]);
   const ctx = { favorites: s.favorites, recent: s.recentEngines };
-  const list = queryGarage(items, { filter, query, sort }, ctx, (i) => texts.get(i) ?? '', s.locale);
-  const counts = countByFilter(items, ctx);
+  const searching = query.trim() !== '';
+  const isLocked = (i: GarageItem) => session.engineLock(i.profile.id) !== null;
+  const scoped = scopeItems(items, view, searching, isLocked);
+  const list = queryGarage(scoped, { filter, query, sort }, ctx, (i) => texts.get(i) ?? '', s.locale);
+  const counts = countByFilter(scoped, ctx);
+  const kindCounts = Object.fromEntries(GARAGE_KINDS.map((k) => [k, scopeItems(items, { ...view, kind: k }, false, isLocked).length])) as Record<GarageKind, number>;
+  const packTab = view.kind === 'fun' || view.kind === 'music';
+  const packs = packTab ? packChips(scoped, PACK_ORDER) : [];
+  const hiddenSomething = view.hideFree || view.hideLocked;
   const detail = detailId === null ? undefined : items.find((i) => i.profile.id === detailId);
   const running = s.ignition !== 'off';
 
@@ -86,6 +109,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
   const resetFilters = () => {
     setFilter('all');
     setQuery('');
+    if (view.hideFree || view.hideLocked) setView({ hideFree: false, hideLocked: false });
   };
   const emptyText = () => {
     if (query) return t('garage.empty');
@@ -137,8 +161,63 @@ export function Garage({ onClose }: { onClose: () => void }) {
         </label>
       </div>
 
+      <div className="garage-kinds" role="tablist" aria-label={t('garage.kindsAria')}>
+        {GARAGE_KINDS.map((k) => (
+          <button
+            key={k}
+            role="tab"
+            className={`kind-tab ${view.kind === k && !searching ? 'on' : ''}`}
+            aria-selected={view.kind === k}
+            onClick={() => setKind(k)}
+            data-kind={k}
+          >
+            {t(`garage.kind.${k}`)} <span className="filter-count">{kindCounts[k]}</span>
+          </button>
+        ))}
+        <button className={`kind-tab kind-settings ${filtersOpen ? 'on' : ''} ${hiddenSomething ? 'active' : ''}`} onClick={() => setFiltersOpen((o) => !o)} aria-expanded={filtersOpen} data-action="garage-filters">
+          ⚙ {t('garage.hide.button')}{hiddenSomething ? ' •' : ''}
+        </button>
+      </div>
+      {filtersOpen && (
+        <div className="garage-hide" data-testid="garage-hide">
+          {([
+            ['hideFree', 'garage.hide.free'],
+            ['hideLocked', 'garage.hide.locked'],
+            ['funInAll', 'garage.hide.funInAll'],
+            ['musicInAll', 'garage.hide.musicInAll'],
+          ] as const).map(([key, label]) => (
+            <label key={key} className="hide-option">
+              <input type="checkbox" checked={view[key]} onChange={(e) => setView({ [key]: e.target.checked })} data-option={key} />
+              <span>{t(label)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {searching && view.kind !== 'all' && <p className="sheet-hint garage-note">{t('garage.searchAll')}</p>}
+
       <div className="garage-filters" role="toolbar" aria-label={t('garage.filtersAria')}>
-        {FILTER_GROUPS.map((group, gi) => (
+        {packTab ? (
+          <>
+            <div className="filter-group">
+              {BASIC_GROUP.map((f) => (
+                <button key={f} className={`filter-chip ${filter === f ? 'on' : ''} ${counts[f] === 0 ? 'zero' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)} data-filter={f}>
+                  {f === 'all' ? t('garage.kind.all') : t(`garage.f.${f}`)} <span className="filter-count">{counts[f]}</span>
+                </button>
+              ))}
+            </div>
+            <div className="filter-group">
+              {packs.map(({ id, count }) => {
+                const f: AnyFilter = `pack:${id}`;
+                const pk = ENGINE_PACKS.find((x) => x.id === id);
+                return (
+                  <button key={id} className={`filter-chip filter-pack ${filter === f ? 'on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)} data-filter={f} style={pk ? { borderColor: pk.cover.accent } : undefined}>
+                    {pk?.name[t.lang] ?? id} <span className="filter-count">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : FILTER_GROUPS.map((group, gi) => (
           <div className="filter-group" key={gi}>
             {group.map((f) => (
               <button
@@ -161,7 +240,7 @@ export function Garage({ onClose }: { onClose: () => void }) {
           <div className="garage-empty">
             <p>{emptyText()}</p>
             {filter === 'custom' && !query && <button className="btn btn-primary" onClick={() => openStudio(null, true)}>+ {t('studio.create')}</button>}
-            {(filter !== 'all' || query) && <button className="btn" onClick={resetFilters}>{t('garage.emptyReset')}</button>}
+            {(filter !== 'all' || query || hiddenSomething) && <button className="btn" onClick={resetFilters}>{t('garage.emptyReset')}</button>}
           </div>
         ) : (
           <div className="garage-grid">
@@ -232,7 +311,7 @@ function GarageCard({ item, onDetails, onEdit }: { item: GarageItem; onDetails: 
       {music ? (
         <dl className="g-specs">
           <div><dt>{t('garage.tempo')}</dt><dd>{music.bpm[0]}–{music.bpm[1]}</dd></div>
-          <div className="g-spec-wide"><dt>{t('garage.musicStyle')}</dt><dd>{t.dyn(`musicStyle.${music.id}`) ?? music.id}</dd></div>
+          <div className="g-spec-wide"><dt>{t('garage.musicStyle')}</dt><dd>{getPack(item.packId)?.name[t.lang] ?? '—'}</dd></div>
         </dl>
       ) : (
       <dl className="g-specs">

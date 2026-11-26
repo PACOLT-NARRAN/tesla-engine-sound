@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MusicBrain, type MusicInputs, type MusicNote } from '../src/audio/music/musicBrain.ts';
 import { MUSIC_STYLES, getMusicStyle } from '../src/audio/music/musicStyles.ts';
+import { MUSIC_PACK_IDS } from '../src/audio/music/tracks.ts';
+import { SONGS } from '../src/audio/music/songData.ts';
+import { noteToMidi, parseChord, parseSong } from '../src/audio/music/songs.ts';
 import { MUSIC_CATALOG, MUSIC_PROFILES } from '../src/profiles/musicEngines.ts';
 import { ENGINE_PACKS } from '../src/profiles/packs.ts';
 import { MotionEstimator } from '../src/motion/MotionEstimator.ts';
@@ -23,11 +26,61 @@ function run(b: MusicBrain, t: { now: number }, secs: number, i: Partial<MusicIn
 
 const kinds = (ns: MusicNote[]) => new Set(ns.map((n) => n.inst));
 
-test('every music engine has a known style and belongs to the drive-music pack', () => {
-  assert.ok(ENGINE_PACKS.some((p) => p.id === 'drive-music'));
-  assert.equal(MUSIC_PROFILES.length, 5);
+test('music packs: 10 drive-music styles, 10+ tracks per genre pack, 15+ Christmas carols', () => {
+  const packIds = new Set(ENGINE_PACKS.map((p) => p.id));
   for (const p of MUSIC_PROFILES) assert.ok(getMusicStyle(p.audio.music), p.id);
-  for (const c of MUSIC_CATALOG) assert.equal(c.packId, 'drive-music');
+  for (const c of MUSIC_CATALOG) assert.ok(c.packId && packIds.has(c.packId), `${c.id} pack ${c.packId}`);
+  const count = (id: string) => MUSIC_CATALOG.filter((c) => c.packId === id).length;
+  assert.equal(count('drive-music'), 10);
+  assert.ok(count('christmas') >= 15, `christmas ${count('christmas')}`);
+  for (const id of MUSIC_PACK_IDS) if (id !== 'drive-music' && id !== 'christmas') assert.ok(count(id) >= 10, `${id} ${count(id)}`);
+  assert.equal(new Set(MUSIC_PROFILES.map((p) => p.id)).size, MUSIC_PROFILES.length, 'unique ids');
+  for (const id of ['music-synthwave', 'music-techno', 'music-lofi', 'music-ambient', 'music-epic']) assert.ok(MUSIC_PROFILES.some((p) => p.id === id), id);
+});
+
+test('every written song parses, its melody fills whole bars and matches its chords', () => {
+  for (const [name, song] of Object.entries(SONGS)) {
+    const p = parseSong(song);
+    let pos = 0;
+    for (const tok of song.melody.trim().split(/\s+/)) pos += Number(tok.split('.')[1]);
+    assert.equal(pos, p.bars.length * p.stepsPerBar, `${name}: melody ${pos / p.stepsPerBar} bars vs ${p.bars.length} chord bars`);
+    for (const n of p.notes) assert.ok(n.midi >= 40 && n.midi <= 96, `${name} note ${n.midi}`);
+  }
+  assert.deepEqual(parseChord('F#m7').tones.map((m) => m % 12).sort((a, b) => a - b), [1, 4, 6, 9]);
+  assert.equal(noteToMidi('C4'), 60);
+  assert.equal(noteToMidi('Bb3'), 58);
+});
+
+test('gears add instruments: counter-line, bells, choir, harmony; upshift plays a fanfare', () => {
+  const b = new MusicBrain(getMusicStyle('synthwave')!, 4);
+  const t = { now: 0 };
+  b.begin(0);
+  const g1 = run(b, t, 8, { speed: 50 / 3.6, gear: 1, accel: 1.5 });
+  assert.ok(!kinds(g1).has('counter') && !kinds(g1).has('choir'));
+  b.shift('up');
+  const up = run(b, t, 1, { speed: 50 / 3.6, gear: 2, accel: 1.5 });
+  assert.ok(up.filter((n) => n.inst === 'fanfare').length === 4, 'four-note fanfare');
+  const g6 = run(b, t, 10, { speed: 90 / 3.6, gear: 6, accel: 2.5 });
+  for (const k of ['counter', 'choir', 'harmony', 'bell'] as const) assert.ok(kinds(g6).has(k), `gear 6 has ${k}`);
+  assert.equal(b.layers.gearVoices, 5);
+});
+
+test('songs play their written melody from the first bar', () => {
+  const b = new MusicBrain(getMusicStyle('xm-jingle')!, 1);
+  const t = { now: 0 };
+  b.begin(0);
+  const lead = run(b, t, 3, {}).filter((n) => n.inst === 'lead').map((n) => n.midi);
+  assert.deepEqual(lead.slice(0, 7), [76, 76, 76, 76, 76, 76, 76], 'jingle bells, jingle bells');
+});
+
+test('metalcore: braking turns the riff into a breakdown', () => {
+  const b = new MusicBrain(getMusicStyle('mc-breakdown')!, 1);
+  const t = { now: 0 };
+  b.begin(0);
+  const drive = run(b, t, 8, { speed: 80 / 3.6, gear: 4 });
+  assert.ok(drive.some((n) => n.inst === 'guitar' || n.inst === 'power'), 'riffs while driving');
+  run(b, t, 2.5, { speed: 60 / 3.6, accel: -4, gear: 3 });
+  assert.ok(b.layers.halfTime, 'breakdown');
 });
 
 for (const style of MUSIC_STYLES) {
@@ -36,13 +89,13 @@ for (const style of MUSIC_STYLES) {
     const t = { now: 0 };
     b.begin(0);
     const calm = run(b, t, 8, {});
-    assert.ok(calm.some((n) => n.inst === 'pad'), 'pad at standstill');
+    assert.ok(calm.some((n) => n.inst === 'pad' || n.inst === 'lead' || n.inst === 'bell' || n.inst === 'arp'), 'something plays at standstill');
     assert.ok(!kinds(calm).has('kick') && !kinds(calm).has('snare'), 'no drums at standstill');
     const bpmStill = b.bpm;
     const fast = run(b, t, 25, { speed: 130 / 3.6 });
     const k = kinds(fast.slice(-200));
-    assert.ok(k.has('bass') && k.has('kick') && k.has('arp'), `full layers at speed: ${[...k]}`);
-    assert.ok(b.bpm > bpmStill + 10, `tempo rises ${bpmStill} -> ${b.bpm}`);
+    assert.ok((k.has('bass') || k.has('rbass')) && k.has('arp') && (style.drumThreshold > 1 || k.has('kick')), `full layers at speed: ${[...k]}`);
+    assert.ok(b.bpm > bpmStill + (style.bpm[1] - style.bpm[0]) * 0.5, `tempo rises ${bpmStill} -> ${b.bpm}`);
     for (const n of [...calm, ...fast]) {
       assert.ok(Number.isFinite(n.time) && Number.isFinite(n.midi) && n.dur > 0 && n.vel >= 0 && n.vel <= 1 && Math.abs(n.pan) <= 1, JSON.stringify(n));
     }

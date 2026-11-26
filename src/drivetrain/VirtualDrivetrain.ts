@@ -1,6 +1,6 @@
 import type { DrivetrainEvent, DrivetrainState } from '../types/drivetrain.ts';
 import type { EngineProfile } from '../types/profile.ts';
-import { clamp, expApproach, lerp } from '../utils/math.ts';
+import { clamp, expApproach, lerp, smoothstep } from '../utils/math.ts';
 import { engineRpmInGear, selectGear } from './gearbox.ts';
 import { DRIVE_PROFILES, type DriveProfileConfig } from './driveProfiles.ts';
 import { estimateThrottle, isOverrun } from './throttle.ts';
@@ -14,6 +14,11 @@ export interface DrivetrainInput {
 const START_DURATION_S = 1.1;
 const MAX_RPM_RISE_PER_S = 14000;
 const MAX_RPM_FALL_PER_S = 9000;
+/** Pulling away: the clutch bites gradually over this long (s), so the revs swell instead of jumping. */
+const LAUNCH_ENGAGE_S = 1.1;
+/** RPM rise limit while pulling away from rest (rpm/s at no / full throttle). */
+const LAUNCH_RISE_MIN = 1400;
+const LAUNCH_RISE_MAX = 4200;
 /** Manual gear choice returns to automatic after this long without another scroll. */
 export const MANUAL_HOLD_S = 15;
 /** How fast the engine climbs while the REV pedal is held (rpm/s). */
@@ -71,6 +76,8 @@ export class VirtualDrivetrain {
   /** Vehicle speed of the last update (m/s), to judge manual shift requests immediately. */
   private lastSpeed = 0;
   private revRpm = 0;
+  /** Seconds since the car left standstill (Infinity once rolling for a while). */
+  private launchT = Infinity;
   private revReleaseOverrun = 0;
   private drive: DriveProfileConfig;
   /** Manual mode: the gear the driver chose (applied by the next update). */
@@ -223,6 +230,10 @@ export class VirtualDrivetrain {
       return events;
     }
 
+    // Pulling-away timer.
+    if (input.stationary || input.speed < 0.3) this.launchT = 0;
+    else if (this.launchT < 10) this.launchT += dt;
+
     // 1) Virtual pedal.
     const rawThrottle = estimateThrottle(input.speed, input.accel, Math.max(1, s.gear), gb, p.dynamics);
     const tau = (rawThrottle > s.throttle ? THROTTLE_RISE_TAU : THROTTLE_FALL_TAU) / this.drive.throttleResponse;
@@ -274,7 +285,9 @@ export class VirtualDrivetrain {
       const geared = engineRpmInGear(input.speed, s.gear, gb);
       if (s.gear === 1) {
         // Clutch slip at launch: engine RPM leads road speed, then blends into the locked RPM.
-        const slip = p.idleRPM + s.throttle * (gb.launchRPM - p.idleRPM);
+        // Pulling away from rest the clutch bites gradually, so the slip builds up smoothly.
+        const engage = smoothstep(0, LAUNCH_ENGAGE_S, this.launchT);
+        const slip = p.idleRPM + Math.pow(s.throttle, 1.3) * (gb.launchRPM - p.idleRPM) * (0.35 + 0.65 * engage);
         const lock = clamp(geared / Math.max(slip, 1), 0, 1);
         target = Math.max(geared, lerp(slip, geared, lock * lock));
       } else {
@@ -341,7 +354,11 @@ export class VirtualDrivetrain {
     // 5) Engine inertia + slew-rate limit: GPS noise cannot make the needle jump.
     const response = s.shifting ? p.dynamics.engineResponse * 0.4 : p.dynamics.engineResponse;
     let next = expApproach(s.rpm, rpmTarget, dt, response);
-    const maxUp = MAX_RPM_RISE_PER_S * dt;
+    let maxUp = MAX_RPM_RISE_PER_S * dt;
+    // Pulling away from rest: the revs swell with the clutch instead of jumping.
+    if (s.gear <= 1 && !s.revPedal && this.launchT < LAUNCH_ENGAGE_S * 1.5 && this.startElapsed >= START_DURATION_S) {
+      maxUp = Math.min(maxUp, (LAUNCH_RISE_MIN + (LAUNCH_RISE_MAX - LAUNCH_RISE_MIN) * s.throttle) * dt);
+    }
     const maxDown = MAX_RPM_FALL_PER_S * dt * (s.shifting ? 2 : 1);
     next = clamp(next, s.rpm - maxDown, s.rpm + maxUp);
     s.rpm = clamp(next, 0, p.limiterRPM + 150);

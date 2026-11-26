@@ -135,3 +135,31 @@ test('preview script really revs a standing engine and lets it fall back', async
   assert.ok(end < p.idleRPM * 1.5, `end ${Math.round(end)}`);
   assert.ok(peak <= p.limiterRPM + 150);
 });
+
+test('garage tabs: engines / fun / music, hide choices, pack shortcuts, search looks everywhere', async () => {
+  const { scopeItems, packChips, itemKind, DEFAULT_GARAGE_VIEW, GARAGE_VIEW_SCHEMA, matchesAnyFilter } = await import('../src/garage/garage.ts');
+  const { testProfile } = await import('./helpers.ts');
+  type It = import('../src/garage/garage.ts').GarageItem;
+  const mk = (id: string, tier: 'free' | 'pro' | 'pack', packId: string | null, audio: Record<string, unknown> = {}) => {
+    const base = testProfile({ id });
+    return { profile: { ...base, audio: { ...base.audio, ...audio } }, meta: undefined, title: id, tier, packId, custom: false };
+  };
+  const items: It[] = [
+    mk('v8', 'free', null), mk('v12', 'pro', null),
+    mk('fun-nuke', 'pack', 'crazy', { voice: 'nuke' }),
+    mk('music-a', 'pack', 'techno', { music: 'a' }), mk('music-b', 'pack', 'christmas', { music: 'b' }),
+  ];
+  const none = (_i: It) => false;
+  assert.deepEqual(items.map(itemKind), ['engines', 'engines', 'fun', 'music', 'music']);
+  const ids = (v: Partial<typeof DEFAULT_GARAGE_VIEW>, searching = false, locked = none) =>
+    scopeItems(items, { ...DEFAULT_GARAGE_VIEW, ...v }, searching, locked).map((i) => i.profile.id);
+  assert.deepEqual(ids({}), ['v8', 'v12', 'fun-nuke'], 'All: engines + fun, music only in its tab by default');
+  assert.deepEqual(ids({ kind: 'music' }), ['music-a', 'music-b']);
+  assert.deepEqual(ids({ musicInAll: true }), ['v8', 'v12', 'fun-nuke', 'music-a', 'music-b']);
+  assert.deepEqual(ids({ hideFree: true, kind: 'engines' }), ['v12']);
+  assert.deepEqual(ids({ hideLocked: true, kind: 'engines' }, false, (i: It) => i.tier === 'pro'), ['v8']);
+  assert.deepEqual(ids({ kind: 'engines' }, true), ['v8', 'v12', 'fun-nuke', 'music-a', 'music-b'], 'search ignores the tab');
+  assert.deepEqual(packChips(items, ['christmas', 'techno', 'crazy']), [{ id: 'christmas', count: 1 }, { id: 'techno', count: 1 }, { id: 'crazy', count: 1 }]);
+  assert.ok(matchesAnyFilter(items[3]!, 'pack:techno', { favorites: [], recent: [] }));
+  assert.deepEqual(GARAGE_VIEW_SCHEMA.sanitize({ kind: 'nope', hideFree: 1 }, DEFAULT_GARAGE_VIEW), DEFAULT_GARAGE_VIEW);
+});

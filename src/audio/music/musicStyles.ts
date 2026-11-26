@@ -1,17 +1,24 @@
+import type { Song } from './songs.ts';
+import { TRACKS } from './tracks.ts';
+
 /**
- * DRIVE MUSIC pack: the musical "styles" the generative music engine can play.
+ * DRIVE MUSIC packs: the musical "styles" the generative music engine can play.
  * A style is pure data (key, chords, tempo range, drum grooves, instrument colours); the
  * driving decides WHICH layers of it play and HOW (see musicBrain.ts). Everything is generated
  * in code: no samples, no recordings, no third-party music.
  */
 
-export type PadTimbre = 'saw' | 'warm' | 'strings' | 'epiano' | 'glass';
-export type BassTimbre = 'saw' | 'acid' | 'sub' | 'pluck' | 'cello';
-export type LeadTimbre = 'saw' | 'square' | 'bell' | 'brass' | 'flute';
-export type ArpShape = 'up' | 'updown' | 'random' | 'pulse';
-export type BassPattern = 'eighths' | 'offbeat' | 'acid' | 'lofi' | 'drone' | 'ostinato';
+export type PadTimbre = 'saw' | 'warm' | 'strings' | 'epiano' | 'glass' | 'organ' | 'choir' | 'none';
+export type BassTimbre = 'saw' | 'acid' | 'sub' | 'pluck' | 'cello' | 'reese' | 'chip' | 'dist';
+export type LeadTimbre = 'saw' | 'square' | 'bell' | 'brass' | 'flute' | 'supersaw' | 'screech' | 'guitar' | 'piano' | 'harpsichord' | 'organ' | 'chip' | 'strings';
+export type ArpShape = 'up' | 'updown' | 'random' | 'pulse' | 'alberti';
+export type ArpVoice = 'saw' | 'square' | 'triangle' | 'bell' | 'piano' | 'harpsichord' | 'pluck';
+export type BassPattern = 'eighths' | 'offbeat' | 'acid' | 'lofi' | 'drone' | 'ostinato' | 'rolling' | 'walking' | 'reverse' | 'dnb' | 'chug' | 'alberti';
+export type KickKind = 'punch' | 'hard' | 'tekno' | 'rock' | 'chip' | 'soft';
+/** Instrument that joins with the higher gears (sustained counter-line, fanfare colour). */
+export type GearTimbre = 'strings' | 'organ' | 'choir' | 'brass' | 'flute' | 'saw' | 'glass';
 
-/** 16-step grooves; 'x' = hit, 'o' = soft hit, '.' = rest. */
+/** 16-step grooves (12 in 3/4); 'x' = hit, 'o' = soft hit, '.' = rest. */
 export interface DrumKit {
   kick: string;
   snare: string;
@@ -20,6 +27,10 @@ export interface DrumKit {
   hatBusy: string;
   /** Low toms / taiko line (optional). */
   tom?: string;
+  /** Double-bass kick line used at high energy (metal). */
+  kickBusy?: string;
+  /** Sleigh bells (Christmas). */
+  jingle?: string;
   /** Snare is a clap (synthwave, techno) rather than a snare drum. */
   clap?: boolean;
 }
@@ -39,13 +50,15 @@ export interface MusicStyle {
   /** 0 = straight, 0.33 = heavy swing on the off 16ths. */
   swing: number;
   drums: DrumKit;
-  /** Drums start only above this cruise level (0..1); ambient styles keep them sparse. */
+  /** Drums start only above this cruise level (0..1); above 1 = never (classical). */
   drumThreshold: number;
   pad: PadTimbre;
   bass: BassTimbre;
   bassPattern: BassPattern;
   lead: LeadTimbre;
   arp: ArpShape;
+  /** Sound of the arpeggio (default: from the style's character). */
+  arpVoice?: ArpVoice;
   /** Master brightness: 0 = dark, 1 = bright. */
   brightness: number;
   /** Reverb and echo amounts 0..1. */
@@ -53,125 +66,33 @@ export interface MusicStyle {
   echo: number;
   /** Lo-fi vinyl crackle bed. */
   vinyl?: boolean;
+  /** Beats per bar (default 4). */
+  meter?: 3 | 4;
+  kick?: KickKind;
+  /** Distortion amount 0..1 for guitars, hard kicks, screech leads and distorted bass. */
+  dist?: number;
+  /** Guitar riff (one char per 16th): 'x' palm-muted chug, 'P' power chord, '-' hold, '.' rest. */
+  riff?: string;
+  /** Riff while braking (metalcore breakdown); the kick doubles it. */
+  breakdown?: string;
+  /** Rock'n'roll boogie guitar (root + fifth / sixth). */
+  boogie?: boolean;
+  /** Lowest note of the bass register (MIDI, default 33 = A1). */
+  bassLow?: number;
+  /** Instrument that joins as the gears go up. */
+  gearVoice?: GearTimbre;
+  /** Orchestral percussion: timpani instead of a crash cymbal. */
+  orchestral?: boolean;
+  /** A written melody (carols, classical themes) instead of improvised motifs. */
+  song?: Song;
 }
 
-// Scales (semitones from the tonic).
-const MINOR = [0, 2, 3, 5, 7, 8, 10] as const;
-const DORIAN = [0, 2, 3, 5, 7, 9, 10] as const;
-const MAJOR = [0, 2, 4, 5, 7, 9, 11] as const;
-const LYDIAN = [0, 2, 4, 6, 7, 9, 11] as const;
-
-export const MUSIC_STYLES: readonly MusicStyle[] = [
-  {
-    // Night drive: 80s synthwave, A minor.
-    id: 'synthwave',
-    root: 57,
-    scale: MINOR,
-    progressions: [[0, 5, 2, 6], [3, 5, 0, 6]],
-    barsPerChord: 1,
-    sevenths: false,
-    bpm: [86, 118],
-    swing: 0,
-    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.', hatBusy: 'x.x.x.x.x.x.x.xx', clap: true },
-    drumThreshold: 0.12,
-    pad: 'saw',
-    bass: 'saw',
-    bassPattern: 'eighths',
-    lead: 'saw',
-    arp: 'up',
-    brightness: 0.65,
-    space: 0.7,
-    echo: 0.55,
-  },
-  {
-    // Motorway techno: F minor, four-on-the-floor, acid bass that opens with the throttle.
-    id: 'techno',
-    root: 53,
-    scale: MINOR,
-    progressions: [[0, 0, 5, 3], [0, 6, 5, 6]],
-    barsPerChord: 2,
-    sevenths: false,
-    bpm: [112, 134],
-    swing: 0,
-    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.', hatBusy: 'xxx.xxx.xxx.xxxx', clap: true },
-    drumThreshold: 0.08,
-    pad: 'glass',
-    bass: 'acid',
-    bassPattern: 'acid',
-    lead: 'square',
-    arp: 'pulse',
-    brightness: 0.75,
-    space: 0.45,
-    echo: 0.6,
-  },
-  {
-    // Lo-fi city cruising: Eb major sevenths, swung beat, electric piano and vinyl crackle.
-    id: 'lofi',
-    root: 63,
-    scale: MAJOR,
-    progressions: [[1, 4, 0, 5], [3, 2, 1, 4]],
-    barsPerChord: 1,
-    sevenths: true,
-    bpm: [72, 92],
-    swing: 0.28,
-    drums: { kick: 'x.....x...x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', hatBusy: 'x.xxx.x.x.xxx.xo' },
-    drumThreshold: 0.1,
-    pad: 'epiano',
-    bass: 'pluck',
-    bassPattern: 'lofi',
-    lead: 'flute',
-    arp: 'random',
-    brightness: 0.4,
-    space: 0.5,
-    echo: 0.35,
-    vinyl: true,
-  },
-  {
-    // Ambient landscape: D lydian, slow chords, glassy bells; drums only at speed.
-    id: 'ambient',
-    root: 62,
-    scale: LYDIAN,
-    progressions: [[0, 1, 4, 5], [3, 0, 1, 4]],
-    barsPerChord: 2,
-    sevenths: true,
-    bpm: [64, 88],
-    swing: 0,
-    drums: { kick: 'x.......x.......', snare: '................', hat: '..o...o...o...o.', hatBusy: 'o.o.o.o.o.o.o.o.' },
-    drumThreshold: 0.45,
-    pad: 'warm',
-    bass: 'sub',
-    bassPattern: 'drone',
-    lead: 'bell',
-    arp: 'updown',
-    brightness: 0.5,
-    space: 1,
-    echo: 0.7,
-  },
-  {
-    // Epic film score: D minor (dorian colour), strings, taiko drums and brass when you push.
-    id: 'epic',
-    root: 62,
-    scale: DORIAN,
-    progressions: [[0, 5, 2, 6], [0, 3, 5, 4]],
-    barsPerChord: 1,
-    sevenths: false,
-    bpm: [78, 108],
-    swing: 0,
-    drums: { kick: 'x.......x.x.....', snare: '....x.......x...', hat: '................', hatBusy: '..x...x...x...x.', tom: 'x..x..x.x..x.xx.' },
-    drumThreshold: 0.15,
-    pad: 'strings',
-    bass: 'cello',
-    bassPattern: 'ostinato',
-    lead: 'brass',
-    arp: 'updown',
-    brightness: 0.55,
-    space: 0.85,
-    echo: 0.25,
-  },
-];
+/** Every playable style: one per track of every music pack. */
+export const MUSIC_STYLES: readonly MusicStyle[] = TRACKS.map((t) => t.style);
+const BY_ID = new Map(MUSIC_STYLES.map((s) => [s.id, s]));
 
 export function getMusicStyle(id: string | undefined): MusicStyle | undefined {
-  return id === undefined ? undefined : MUSIC_STYLES.find((s) => s.id === id);
+  return id === undefined ? undefined : BY_ID.get(id);
 }
 
 export function midiToHz(m: number): number {

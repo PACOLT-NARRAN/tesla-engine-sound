@@ -14,7 +14,7 @@ export function engineTitle(p: EngineProfile): string {
 /** e.g. "5.2 L · 8,500 RPM · 7-speed" / "5,2 l · 8 500 ot/min · 7 st." */
 export function engineSubtitle(p: EngineProfile, t: Translator): string {
   const style = getMusicStyle(p.audio.music);
-  if (style) return t('engine.subtitleMusic', { lo: style.bpm[0], hi: style.bpm[1] });
+  if (style) return t(style.song ? 'engine.subtitleSong' : 'engine.subtitleMusic', { lo: style.bpm[0], hi: style.bpm[1] });
   const rpm = t.num(p.redlineRPM);
   const gears = p.gearbox.gearRatios.length;
   if (p.displacementL === null) return t('engine.subtitleNoDisp', { rpm, gears });

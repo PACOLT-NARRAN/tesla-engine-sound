@@ -256,3 +256,24 @@ test('rapid taps skip several gears at once, but never past the rev limiter', ()
   assert.ok(dt.state.gear <= auto - 3);
   assert.ok(dt.state.rpm <= p.limiterRPM + 150);
 });
+
+test('pulling away: the revs swell smoothly instead of jumping to a quarter of the dial', () => {
+  for (const a of [1, 2.5, 4]) {
+    const dt = new VirtualDrivetrain(p);
+    dt.ignite();
+    for (let i = 0; i < 150; i++) dt.update(0.02, { speed: 0, accel: 0, stationary: true });
+    let v = 0;
+    let prev = dt.state.rpm;
+    let maxRate = 0;
+    let at02 = 0;
+    for (let i = 1; i <= 75; i++) {
+      v += a * 0.02;
+      dt.update(0.02, { speed: v, accel: a, stationary: v < 0.3 });
+      maxRate = Math.max(maxRate, (dt.state.rpm - prev) / 0.02);
+      prev = dt.state.rpm;
+      if (i === 10) at02 = dt.state.rpm;
+    }
+    assert.ok(maxRate < 4500, `accel ${a}: rise ${Math.round(maxRate)} rpm/s`);
+    assert.ok(at02 < p.idleRPM + 0.25 * (p.gearbox.launchRPM - p.idleRPM) + 300, `accel ${a}: ${Math.round(at02)} rpm after 0.2 s`);
+  }
+});
